@@ -32,4 +32,4 @@ class F(STL):
 class Neg(STL):
     arg = ast.field(STL)
     
-    def __repr__(self): return "¬({})"
+    def __repr__(self): return "¬({})".format(self.arg)
