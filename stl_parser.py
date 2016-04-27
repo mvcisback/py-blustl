@@ -63,13 +63,12 @@ class Visitor(NodeVisitor):
     def visit_or(self, _, (phi1, _2, _3, _4, phi2)): return stl.Or(phi1, phi2)
     def visit_and(self, _, (phi1, _2, _3, _4, phi2)): return stl.And(phi1, phi2)
 
-def parse(stl_str):
-    return Visitor().visit(GRAMMAR.parse(stl_str))
+def parse(stl_str, rule="psi"):
+    return Visitor().visit(GRAMMAR[rule].parse(stl_str))
 
 def main():
     with open('example1.stl', 'r') as f:
         print(parse("".join(f.readlines())))
-
 
 if __name__ == '__main__':
     main()
