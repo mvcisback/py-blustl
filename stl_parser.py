@@ -57,9 +57,9 @@ class Visitor(NodeVisitor):
     def visit_f(self, _, (_1, interval, phi)): return stl.F(phi, interval)
     def visit_g(self, _, (_1, interval, phi)): return stl.G(phi, interval)
     def visit_fg(self, _, (_1, i1, _2, i2, p)):
-        return stl.F(stl.G(p, i2), i1)
+        return stl.FG(p, i1, i2)
     def visit_gf(self, _, (_1, i1, _2, i2, p)):
-        return stl.G(stl.F(p, i2), i1)
+        return stl.GF(p, i1, i2)
     def visit_or(self, _, (phi1, _2, _3, _4, phi2)): return stl.Or(phi1, phi2)
     def visit_and(self, _, (phi1, _2, _3, _4, phi2)): return stl.And(phi1, phi2)
 

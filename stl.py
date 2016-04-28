@@ -43,6 +43,20 @@ class G(Path_STL):
     interval = ast.field(Interval)
     
     def __repr__(self): return "□{}({})".format(self.interval, self.arg)
+
+class FG(Path_STL):
+    arg = ast.field(STL)
+    i1 = ast.field(Interval)
+    i2 = ast.field(Interval)
+    
+    def __repr__(self): return "⋄{}□{}({})".format(self.i1, self.i2, self.arg)
+
+class GF(Path_STL):
+    arg = ast.field(STL)
+    i1 = ast.field(Interval)
+    i2 = ast.field(Interval)
+    
+    def __repr__(self): return "□{}⋄{}({})".format(self.i1, self.i2, self.arg)
     
 class Neg(STL):
     arg = ast.field(STL)
