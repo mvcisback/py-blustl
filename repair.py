@@ -31,7 +31,7 @@ def temporal_strengthen(phi):
 def _change_structure(phi, n, op):
     return [op(phi, stl.G(stl.Pred(i, ineq, oo), unbounded)) for ineq, i
             in product(("<=", ">="), range(0, n))]
-    
+
 
 def weaken_structure(phi, n):
     """phi -> phi or G(x ~ ?)"""

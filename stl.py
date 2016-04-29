@@ -6,7 +6,7 @@ class Path_STL(STL): pass
 
 class Pred(STL):
     lit = ast.field((int,))
-    op = ast.field(("<", ">", ">=", "<="))
+    op = ast.field(("<", ">", ">=", "<=", "="))
     const = ast.field((int, float))
 
     def __repr__(self):
