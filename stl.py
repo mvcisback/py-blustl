@@ -74,7 +74,7 @@ class Neg(STL):
     def children(self): return [self.arg]
 
 
-def inorder_walk(stl):
+def walk(stl):
     children = [stl]
     while len(children) != 0:
         node = children.pop()
