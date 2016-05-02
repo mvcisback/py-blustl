@@ -2,10 +2,11 @@
 from parsimonious import Grammar, NodeVisitor
 from funcy import cat, flatten
 import yaml
+import numpy as np
 
 import stl
 
-GRAMMAR = Grammar(u'''
+STL_GRAMMAR = Grammar(u'''
 env = phi
 sys = phi (_ rank)?
 
@@ -40,7 +41,18 @@ __ = ~r"\s"*
 EOL = "\\n"
 ''')
 
-class Visitor(NodeVisitor):
+MATRIX_GRAMMAR = Grammar(r'''
+matrix = "[" __ row+ __ "]"
+row = consts ";"? __
+consts = (const _ consts) / const
+
+const = ~r"[\+\-]?\d+(\.\d+)?"
+_ = ~r"\s"+
+__ = ~r"\s"*
+'''
+)
+
+class STLVisitor(NodeVisitor):
     def generic_visit(self, _, children): return children
 
     def visit_env(self, _, phi): return phi
@@ -75,16 +87,38 @@ class Visitor(NodeVisitor):
     def visit_id(self, name, children): return int(name.text[1:])
     def visit_const(self, const, children): return float(const.text)
 
+class MatrixVisitor(NodeVisitor):
+    def generic_visit(self, _, children): return children
+    def visit_matrix(self, _, (_1, _2, rows, _3, _4)): return rows
+    def visit_row(self, _, (consts, _1, _2)): return consts
+    def visit_const(self, node, _): return float(node.text)
+    def visit_consts(self, _, children): return flatten(children)
 
-def parse(stl_str, rule="phi"):
-    return Visitor().visit(GRAMMAR[rule].parse(stl_str))
+    
+def parse_stl(stl_str, rule="phi"):
+    return STLVisitor().visit(STL_GRAMMAR[rule].parse(stl_str))
+
+
+def parse_matrix(mat_str):
+    return np.array(MatrixVisitor().visit(MATRIX_GRAMMAR.parse(mat_str)))
 
 
 def from_yaml(content):
     g = yaml.load(content)
-    g['sys'] = [parse(x, rule="sys") for x in g['sys']]
-    g['env'] = [parse(x, rule="env") for x in g['env']]
-    g['init'] = [parse(x, rule="pred") for x in g['init']]
+    g['sys'] = [parse_stl(x, rule="sys") for x in g['sys']]
+    g['env'] = [parse_stl(x, rule="env") for x in g['env']]
+    g['init'] = [parse_stl(x, rule="pred") for x in g['init']]
+    g['state_space']['A'] = parse_matrix(g['state_space']['A'])
+    g['state_space']['B'] = parse_matrix(g['state_space']['B'])
+
+    # TODO: check num vars
+
+    n = g['params']['num_vars']
+    n_sys = g['params']['num_sys_inputs']
+    n_env = g['params']['num_sys_inputs']
+    assert g['state_space']['A'].shape == (n, n)
+    assert g['state_space']['B'].shape == (n_sys + n_env, n)
+
     return g
 
 
