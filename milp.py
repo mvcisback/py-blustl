@@ -1,24 +1,22 @@
+# TODO: factor out encode recursive structure into a generator
+# TODO: add useful constraint names
+# TODO: add tests where variables are preapplied to constraints
+
 from __future__ import division
 
 from math import ceil
 from itertools import product, chain, starmap
-from operator import mul
 import operator
 from collections import defaultdict
-from functools import partial
 
 from singledispatch import singledispatch
-from funcy import pairwise, mapcat
+from funcy import mapcat, pluck, group_by
 import gurobipy as gpy
 
 import stl
 
 M = 10000 # TODO
 eps = 0.01 # TODO
-
-# TODO make class for tracking current variables
-# - implement get_var as part of accessor
-# - automatically encode unseen variables
 
 class Store(object):
     def __init__(self, problem):
@@ -69,6 +67,16 @@ class Store(object):
         return int(ceil(self.H / self.dt))
 
 
+def encode_state_evolution(store, problem):
+    inputs = lambda t: chain(pluck(t, store.u.values()), pluck(t, store.w.values()))
+    state = lambda t: pluck(t, store.x.values())
+    dot = lambda x, y: sum(starmap(operator.mul, zip(x, y)))
+    A, B = problem['state_space']['A'], problem['state_space']['B']
+    for t in range(store.steps-1):
+        for i, (A_i, B_i) in enumerate(zip(A, B)):
+            store.model.addConstr(store.x[i][t+1] == dot(A_i, state(t)) + dot(B_i, inputs(t)))
+
+
 @singledispatch
 def encode(problem):
     """STL -> MILP"""
@@ -86,17 +94,7 @@ def encode(problem):
         store.model.addConstr(u <= 1)
         store.model.addConstr(u >= 0)
 
-    # TODO: Clean up system evolution
-    n = problem['params']['num_vars']
-    n_sys = problem['params']['num_sys_inputs']
-    n_env = problem['params']['num_env_inputs']
-    inputs = lambda t: [store.u[i][t] for i in range(n_sys)] + [store.w[i][t] for i in range(n_env)]
-    state = lambda t: [store.x[i][t] for i in range(n)]
-    dot = lambda x, y: sum(starmap(mul, zip(x, y)))
-    A, B = problem['state_space']['A'], problem['state_space']['B']
-    for t in range(store.steps-1):
-        for i, (A_i, B_i) in enumerate(zip(A, B)):
-            store.model.addConstr(store.x[i][t+1] == dot(A_i, state(t)) + dot(B_i, inputs(t)))
+    encode_state_evolution(store, problem)
 
     for psi in problem['init']:
         x = store.x[psi.lit][0]
@@ -106,26 +104,13 @@ def encode(problem):
     # Assert top level true
     store.model.addConstr(store.z(phi, 0) == 1)
 
+    # Create Objective
     stl_vars =  mapcat(lambda phi: store.x[phi].values(), stl.walk(phi))
+    # TODO: support alternative objective functions
     store.model.setObjective(sum(stl_vars), gpy.GRB.MAXIMIZE)
+
     store.model.update()
-    store.model.optimize()
-
-    if store.model.status == gpy.GRB.Status.INF_OR_UNBD:
-        # Turn presolve off to determine whether store.model is infeasible
-        # or unbounded
-        store.model.setParam(gpy.GRB.Param.Presolve, 0)
-        store.model.optimize()
-
-    if store.model.status == gpy.GRB.Status.OPTIMAL:
-        # TODO: return controller
-        raise NotImplementedError
-        return
-
-    elif store.model.status != gpy.GRB.Status.INFEASIBLE:
-        # TODO: return IIS
-        raise NotImplementedError
-        return
+    return store.model
 
 
 @encode.register(stl.Pred)
@@ -197,20 +182,28 @@ def encode_op(z_psi, elems, model, or_flag=False):
 
 @encode.register(stl.Neg)
 def _(psi, t, store):
-    z_psi = store.z(psi, t)
-    z_phi = store.z(psi.arg, t)
+    z_psi, z_phi = store.z(psi, t), store.z(psi.arg, t)
     model.addConstr(z_psi == 1 - z_phi)
 
-    encode(psi.arg, t, store)
 
+def encode_and_run(problem):
+    model = encode(problem)
+    model.optimize()
 
-# TODO
-@encode.register(stl.FG)
-def _(psi, model, var_map, t, H, dt):
-    raise NotImplementedError
+    if model.status == gpy.GRB.Status.INF_OR_UNBD:
+        # Turn presolve off to determine whether model is infeasible
+        # or unbounded
+        model.setParam(gpy.GRB.Param.Presolve, 0)
+        model.optimize()
 
+    if model.status == gpy.GRB.Status.INFEASIBLE:
+        model.computeIIS()
+        IIS = [x.ConstrName for x in model.getConstrs() if x.IISConstr]
+        return (False, IIS)
 
-# TODO
-@encode.register(stl.GF)
-def _(psi, model, var_map, t, H, dt):
-    raise NotImplementedError
+    elif model.status == gpy.GRB.Status.OPTIMAL:
+        f = lambda x: x[0][0]
+        solution = group_by(f, [(x.VarName, x.X) for x in model.getVars()])
+        return (True, pluck(1, sorted(solution['u'])))
+    else:
+        raise NotImplementedError
