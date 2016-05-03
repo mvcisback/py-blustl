@@ -2,7 +2,6 @@
 # TODO: add tests where variables are preapplied to constraints
 # TODO: implement adversarial w
 # - optionally fix u,w rather than bounding between [0,1]
-# TODO: move H, steps, dt into problem
 # TODO: Compute eps and M based on x and A, B, dt
 # TODO: encode STL robustness metric
 
@@ -24,21 +23,23 @@ M = 10000  # TODO
 eps = 0.01  # TODO
 
 
+DEFAULT_NAME = 'controller_synth'
+
 class Store(object):
-    def __init__(self, problem):
+    def __init__(self, params):
         "docstring"
-        self.model = gpy.Model(name=problem.get('name', 'problem'))
+        self.model = gpy.Model(name=params.get('name', DEFAULT_NAME))
         self._z = defaultdict(dict)
         self.u = defaultdict(dict)
         self.w = defaultdict(dict)
         self.x = defaultdict(dict)
         self.constr_lookup = defaultdict(dict)
         self._constr_counter = Counter()
-        self.problem = problem
+        self.params = params
 
-        n = problem['params']['num_vars']
-        n_sys = problem['params']['num_sys_inputs']
-        n_env = problem['params']['num_env_inputs']
+        n = params['num_vars']
+        n_sys = params['num_sys_inputs']
+        n_env = params['num_env_inputs']
 
         # Add state, input, and env vars
         elems = [('x', n, self.x), ('u', n_sys, self.u), ('w', n_env, self.w)]
@@ -66,11 +67,11 @@ class Store(object):
 
     @property
     def H(self):
-        return ceil(self.problem['params']['time_horizon'])
+        return ceil(self.params['time_horizon'])
 
     @property
     def dt(self):
-        return self.problem['params']['dt']
+        return self.params['dt']
 
     @property
     def steps(self):
@@ -84,11 +85,11 @@ class Store(object):
         self.constr_lookup[r.ConstrName] = (phi, kind)
 
 
-def encode_state_evolution(store, problem):
+def encode_state_evolution(store, params):
     inputs = lambda t: chain(pluck(t, store.u.values()), pluck(t, store.w.values()))
     state = lambda t: pluck(t, store.x.values())
     dot = lambda x, y: sum(starmap(operator.mul, zip(x, y)))
-    A, B = problem['state_space']['A'], problem['state_space']['B']
+    A, B = params['state_space']['A'], params['state_space']['B']
     for t in range(store.steps - 1):
         for i, (A_i, B_i) in enumerate(zip(A, B)):
             constr = store.x[i][t + 1] == dot(A_i, state(t)) + store.dt * dot(
@@ -112,23 +113,23 @@ def encode_input_constr(store, env=False, fixed_inputs=None):
 
 
 @singledispatch
-def encode(problem):
+def encode(params):
     """STL -> MILP"""
 
-    sys = reduce(stl.And, problem['sys'])
-    env = reduce(stl.And, problem['env'], [])
+    sys = reduce(stl.And, params['sys'])
+    env = reduce(stl.And, params['env'], [])
     phi = stl.Or(stl.Neg(env), sys) if env else sys
-    store = Store(problem)
+    store = Store(params)
 
     # encode STL constraints
     encode(phi, 0, store)
 
-    encode_input_constr(store, problem['u'])
-    encode_input_constr(store, problem['w'], env=True)
+    encode_input_constr(store, params['u'])
+    encode_input_constr(store, params['w'], env=True)
 
-    encode_state_evolution(store, problem)
+    encode_state_evolution(store, params)
 
-    for psi in problem['init']:
+    for psi in params['init']:
         x = store.x[psi.lit][0]
         const = psi.const
         store.add_constr(x == const, kind=K.INIT)
@@ -228,8 +229,8 @@ def _(psi, t, store):
     store.add_constr(z_psi == 1 - z_phi, psi, kind=K.Neg)
 
 
-def encode_and_run(problem):
-    model, store = encode(problem)
+def encode_and_run(params):
+    model, store = encode(params)
     model.optimize()
 
     if model.status == gpy.GRB.Status.INF_OR_UNBD:

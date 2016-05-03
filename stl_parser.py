@@ -155,9 +155,9 @@ def from_yaml(content):
 
     # TODO: check num vars
 
-    n = g['params']['num_vars']
-    n_sys = g['params']['num_sys_inputs']
-    n_env = g['params']['num_env_inputs']
+    n = g['num_vars']
+    n_sys = g['num_sys_inputs']
+    n_env = g['num_env_inputs']
     assert g['state_space']['A'].shape == (n, n)
     assert g['state_space']['B'].shape == (n_sys + n_env, n)
     g['u'] = []
