@@ -12,7 +12,11 @@ import gurobipy as gpy
 import stl
 
 M = 10000 # TODO
-eps = 0.001 # TODO
+eps = 0.01 # TODO
+
+# TODO make class for tracking current variables
+# - implement get_var as part of accessor
+# - automatically encode unseen variables
 
 def get_var(x, t, model, var_map):
     if x in var_map and t in var_map[x]:
@@ -81,17 +85,35 @@ def encode(problem):
         for i, (A_i, B_i) in enumerate(zip(A, B)):
             model.addConstr(var_map['x'][i, t+1] == dot(A_i, state(t)) + dot(B_i, inputs(t)))
 
-    # TODO: initial states
     for psi in problem['init']:
         x = var_map['x'][psi.lit, 0]
         const = psi.const
         model.addConstr(x == const)
 
+    # Assert top level true
+    model.addConstr(get_var(phi, 0, model, var_map) == 1)
+
     stl_vars =  mapcat(lambda x: var_map.get(x).values(), stl.walk(phi))
     model.setObjective(sum(stl_vars), gpy.GRB.MAXIMIZE)
-
     model.update()
-    model.write('foo.lp')
+    model.optimize()
+
+    if model.status == gpy.GRB.Status.INF_OR_UNBD:
+        # Turn presolve off to determine whether model is infeasible
+        # or unbounded
+        model.setParam(gpy.GRB.Param.Presolve, 0)
+        model.optimize()
+
+    if model.status == GRB.Status.OPTIMAL:
+        # TODO: return controller
+        raise NotImplementedError
+        return 
+
+    elif model.status != GRB.Status.INFEASIBLE:
+        # TODO: return IIS
+        raise NotImplementedError
+        return 
+
 
 @encode.register(stl.Pred)
 def _(psi, model, var_map, t, H, dt):
@@ -144,7 +166,7 @@ def encode_temp_op(psi, model, var_map, t, H, dt, or_flag=False):
     f = lambda x: int(ceil(x / dt))
     a, b = f(min(t + a, H)), f(min(t + b, H))
     
-    elems = [get_var(psi.arg, i, model, var_map) for i in range(a, b)]
+    elems = [get_var(psi.arg, i, model, var_map) for i in range(a, b + 1)]
     encode_op(z_psi, elems, model, or_flag=or_flag)
 
     for i in range(a, b + 1):

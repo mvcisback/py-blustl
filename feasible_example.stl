@@ -1,0 +1,16 @@
+params:
+  num_vars: 1
+  num_sys_inputs: 1
+  num_env_inputs: 0
+  time_horizon: 4
+  dt: 1
+
+init:
+- 'x0 = 0'
+
+sys:
+- 'F[0,2](x0 > 5) [4]'
+
+state_space:
+  A: '[1]'
+  B: '[5]'
