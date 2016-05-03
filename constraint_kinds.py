@@ -1,5 +1,6 @@
 from enum import Enum, unique
 
+
 @unique
 class Kind(Enum):
     INIT = 1

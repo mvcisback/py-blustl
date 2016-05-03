@@ -23,6 +23,7 @@ from constraint_kinds import Kind as K
 M = 10000  # TODO
 eps = 0.01  # TODO
 
+
 class Store(object):
     def __init__(self, problem):
         "docstring"
@@ -90,8 +91,10 @@ def encode_state_evolution(store, problem):
     A, B = problem['state_space']['A'], problem['state_space']['B']
     for t in range(store.steps - 1):
         for i, (A_i, B_i) in enumerate(zip(A, B)):
-            constr = store.x[i][t + 1] == dot(A_i, state(t)) + store.dt*dot(B_i, inputs(t))
+            constr = store.x[i][t + 1] == dot(A_i, state(t)) + store.dt * dot(
+                B_i, inputs(t))
             store.add_constr(constr, kind=K.DYNAMICS)
+
 
 def encode_input_constr(store, env=False, fixed_inputs=None):
     u = store.w if env else store.u
@@ -136,7 +139,7 @@ def encode(problem):
     # Create Objective
     stl_vars = mapcat(dict.values, store._z.values())
     # TODO: support alternative objective functions
-    
+
     store.model.setObjective(sum(stl_vars), gpy.GRB.MAXIMIZE)
 
     store.model.update()
@@ -151,12 +154,20 @@ def _(psi, t, store):
 
     # TODO combine
     if psi.op in ("<", "<=", "="):
-        store.add_constr(const - x <= M * z_t - eps, phi=psi, kind=K.PRED_UPPER)
-        store.add_constr(x - const <= M * (1 - z_t) - eps, phi=psi, kind=K.PRED_LOWER)
+        store.add_constr(const - x <= M * z_t - eps,
+                         phi=psi,
+                         kind=K.PRED_UPPER)
+        store.add_constr(x - const <= M * (1 - z_t) - eps,
+                         phi=psi,
+                         kind=K.PRED_LOWER)
 
     if psi.op in (">", ">=", "="):
-        store.add_constr(x - const <= M * z_t - eps, phi=psi, kind=K.PRED_UPPER)
-        store.add_constr(const - x <= M * (1 - z_t) - eps, phi=psi, kind=K.PRED_LOWER)
+        store.add_constr(x - const <= M * z_t - eps,
+                         phi=psi,
+                         kind=K.PRED_UPPER)
+        store.add_constr(const - x <= M * (1 - z_t) - eps,
+                         phi=psi,
+                         kind=K.PRED_LOWER)
 
 
 @encode.register(stl.Or)
@@ -229,7 +240,8 @@ def encode_and_run(problem):
 
     if model.status == gpy.GRB.Status.INFEASIBLE:
         model.computeIIS()
-        IIS = [store.constr_lookup[x.ConstrName] for x in model.getConstrs() if x.IISConstr]
+        IIS = [store.constr_lookup[x.ConstrName]
+               for x in model.getConstrs() if x.IISConstr]
         return (False, IIS)
 
     elif model.status == gpy.GRB.Status.OPTIMAL:

@@ -6,7 +6,6 @@ import numpy as np
 
 import stl
 
-
 # TODO: allow parsing multiple ors & ands together
 STL_GRAMMAR = Grammar(u'''
 env = phi
@@ -51,52 +50,93 @@ consts = (const _ consts) / const
 const = ~r"[\+\-]?\d+(\.\d+)?"
 _ = ~r"\s"+
 __ = ~r"\s"*
-'''
-)
+''')
+
 
 class STLVisitor(NodeVisitor):
-    def generic_visit(self, _, children): return children
+    def generic_visit(self, _, children):
+        return children
 
-    def visit_env(self, _, phi): return phi
-    def visit_sys(self, _, (phi, maybe_rank)): 
+    def visit_env(self, _, phi):
+        return phi
+
+    def visit_sys(self, _, (phi, maybe_rank)):
         maybe_rank = flatten(maybe_rank)
         rank = maybe_rank[0] if len(maybe_rank) > 0 else 0
         return phi
-    def visit_rank(self, _, (_1, const, _2)): return const
 
-    def visit_phi(self, _, children): return children[0]
-    def visit_phi2(self, _, children): return children[0]
+    def visit_rank(self, _, (_1, const, _2)):
+        return const
 
-    def visit_paren_phi(self, _, (_1, _2, phi, _3, _4)): return phi
-    def visit_paren_phi2(self, _, (_1, _2, phi, _3, _4)): return phi
-    def visit_pred(self, _, (id, _1, op, _3, const)): 
+    def visit_phi(self, _, children):
+        return children[0]
+
+    def visit_phi2(self, _, children):
+        return children[0]
+
+    def visit_paren_phi(self, _, (_1, _2, phi, _3, _4)):
+        return phi
+
+    def visit_paren_phi2(self, _, (_1, _2, phi, _3, _4)):
+        return phi
+
+    def visit_pred(self, _, (id, _1, op, _3, const)):
         return stl.Pred(id, op, const)
 
-    def visit_interval(self, _, (_1, _2, left, _3, _4, _5, right, _6, _7)): 
+    def visit_interval(self, _, (_1, _2, left, _3, _4, _5, right, _6, _7)):
         return stl.Interval(left, right)
 
-    def visit_f(self, _, (_1, interval, phi)): return stl.F(phi, interval)
-    def visit_g(self, _, (_1, interval, phi)): return stl.G(phi, interval)
-    def visit_fg(self, _, (_1, i1, _2, i2, p)): return stl.F(stl.G(p, i2), i2)
-    def visit_gf(self, _, (_1, i1, _2, i2, p)): return stl.G(stl.F(p, i2), i1)
+    def visit_f(self, _, (_1, interval, phi)):
+        return stl.F(phi, interval)
 
-    def visit_or(self, _, (phi1, _2, _3, _4, phi2)): return stl.Or(phi1, phi2)
-    def visit_or2(self, _, (phi1, _2, _3, _4, phi2)): return stl.Or(phi1, phi2)
-    def visit_and(self, _, (phi1, _2, _3, _4, phi2)): return stl.And(phi1, phi2)
-    def visit_and2(self, _, (phi1, _2, _3, _4, phi2)): return stl.And(phi1, phi2)
+    def visit_g(self, _, (_1, interval, phi)):
+        return stl.G(phi, interval)
 
-    def visit_op(self, op, _): return op.text
-    def visit_id(self, name, children): return int(name.text[1:])
-    def visit_const(self, const, children): return float(const.text)
+    def visit_fg(self, _, (_1, i1, _2, i2, p)):
+        return stl.F(stl.G(p, i2), i2)
+
+    def visit_gf(self, _, (_1, i1, _2, i2, p)):
+        return stl.G(stl.F(p, i2), i1)
+
+    def visit_or(self, _, (phi1, _2, _3, _4, phi2)):
+        return stl.Or(phi1, phi2)
+
+    def visit_or2(self, _, (phi1, _2, _3, _4, phi2)):
+        return stl.Or(phi1, phi2)
+
+    def visit_and(self, _, (phi1, _2, _3, _4, phi2)):
+        return stl.And(phi1, phi2)
+
+    def visit_and2(self, _, (phi1, _2, _3, _4, phi2)):
+        return stl.And(phi1, phi2)
+
+    def visit_op(self, op, _):
+        return op.text
+
+    def visit_id(self, name, children):
+        return int(name.text[1:])
+
+    def visit_const(self, const, children):
+        return float(const.text)
+
 
 class MatrixVisitor(NodeVisitor):
-    def generic_visit(self, _, children): return children
-    def visit_matrix(self, _, (_1, _2, rows, _3, _4)): return rows
-    def visit_row(self, _, (consts, _1, _2)): return consts
-    def visit_const(self, node, _): return float(node.text)
-    def visit_consts(self, _, children): return flatten(children)
+    def generic_visit(self, _, children):
+        return children
 
-    
+    def visit_matrix(self, _, (_1, _2, rows, _3, _4)):
+        return rows
+
+    def visit_row(self, _, (consts, _1, _2)):
+        return consts
+
+    def visit_const(self, node, _):
+        return float(node.text)
+
+    def visit_consts(self, _, children):
+        return flatten(children)
+
+
 def parse_stl(stl_str, rule="phi"):
     return STLVisitor().visit(STL_GRAMMAR[rule].parse(stl_str))
 
@@ -129,6 +169,7 @@ def from_yaml(content):
 def main():
     with open('example1.stl', 'r') as f:
         print(from_yaml(f))
+
 
 if __name__ == '__main__':
     main()
