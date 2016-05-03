@@ -1,8 +1,10 @@
 # TODO: factor out encode recursive structure into a generator
-# TODO: add useful constraint names
 # TODO: add tests where variables are preapplied to constraints
 # TODO: implement adversarial w
+# - optionally fix u,w rather than bounding between [0,1]
 # TODO: move H, steps, dt into problem
+# TODO: Compute eps and M based on x and A, B, dt
+# TODO: encode STL robustness metric
 
 from __future__ import division
 
@@ -12,7 +14,7 @@ import operator
 from collections import defaultdict, Counter
 
 from singledispatch import singledispatch
-from funcy import mapcat, pluck, group_by
+from funcy import mapcat, pluck, group_by, drop
 import gurobipy as gpy
 
 import stl
@@ -91,12 +93,17 @@ def encode_state_evolution(store, problem):
             constr = store.x[i][t + 1] == dot(A_i, state(t)) + store.dt*dot(B_i, inputs(t))
             store.add_constr(constr, kind=K.DYNAMICS)
 
-def encode_input_constr(store, env=False):
-    # add input bounds u in [0, 1]
-    inputs = store.w if env else store.u
+def encode_input_constr(store, env=False, fixed_inputs=None):
+    u = store.w if env else store.u
+    inputs = u.values()
+    if fixed_inputs:
+        drop(len(fixed_inputs), inputs)
+        for i, t, val in fixed_inputs:
+            store.add_constr(u[i][t] == val)
+
     k1 = K.ENV_INPUT_UPPER if env else K.SYS_INPUT_UPPER
     k2 = K.ENV_INPUT_LOWER if env else K.SYS_INPUT_LOWER
-    for u in mapcat(dict.values, inputs.values()):
+    for u in mapcat(dict.values, inputs):
         store.add_constr(u <= 1, kind=k1)
         store.add_constr(u >= 0, kind=k2)
 
@@ -113,8 +120,8 @@ def encode(problem):
     # encode STL constraints
     encode(phi, 0, store)
 
-    encode_input_constr(store)
-    encode_input_constr(store, env=True)
+    encode_input_constr(store, problem['u'])
+    encode_input_constr(store, problem['w'], env=True)
 
     encode_state_evolution(store, problem)
 
