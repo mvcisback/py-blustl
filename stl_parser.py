@@ -105,8 +105,8 @@ def parse_matrix(mat_str):
 
 def from_yaml(content):
     g = yaml.load(content)
-    g['sys'] = [parse_stl(x, rule="sys") for x in g['sys']]
-    g['env'] = [parse_stl(x, rule="env") for x in g['env']]
+    g['sys'] = [parse_stl(x, rule="sys") for x in g.get('sys', [])]
+    g['env'] = [parse_stl(x, rule="env") for x in g.get('env', [])]
     g['init'] = [parse_stl(x, rule="pred") for x in g['init']]
     g['state_space']['A'] = parse_matrix(g['state_space']['A'])
     g['state_space']['B'] = parse_matrix(g['state_space']['B'])
@@ -115,7 +115,7 @@ def from_yaml(content):
 
     n = g['params']['num_vars']
     n_sys = g['params']['num_sys_inputs']
-    n_env = g['params']['num_sys_inputs']
+    n_env = g['params']['num_env_inputs']
     assert g['state_space']['A'].shape == (n, n)
     assert g['state_space']['B'].shape == (n_sys + n_env, n)
 
