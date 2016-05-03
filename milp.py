@@ -1,6 +1,8 @@
 # TODO: factor out encode recursive structure into a generator
 # TODO: add useful constraint names
 # TODO: add tests where variables are preapplied to constraints
+# TODO: implement adversarial w
+# TODO: move H, steps, dt into problem
 
 from __future__ import division
 
@@ -15,8 +17,9 @@ import gurobipy as gpy
 
 import stl
 
-M = 10000 # TODO
-eps = 0.01 # TODO
+M = 10000  # TODO
+eps = 0.01  # TODO
+
 
 class Store(object):
     def __init__(self, problem):
@@ -36,8 +39,9 @@ class Store(object):
         elems = [('x', n, self.x), ('u', n_sys, self.u), ('w', n_env, self.w)]
         for pre, num, d in elems:
             for i, t in product(range(num), range(self.steps)):
-                name ="{}{}_{}".format(pre, i, t)
-                d[i][t] = self.model.addVar(vtype=gpy.GRB.CONTINUOUS, name=name)
+                name = "{}{}_{}".format(pre, i, t)
+                d[i][t] = self.model.addVar(vtype=gpy.GRB.CONTINUOUS,
+                                            name=name)
 
         self.model.update()
 
@@ -45,7 +49,8 @@ class Store(object):
         if x in self._z and t in self._z[x]:
             return self._z[x][t]
 
-        vtype = gpy.GRB.BINARY if isinstance(x, stl.Pred) else gpy.GRB.CONTINUOUS
+        vtype = gpy.GRB.BINARY if isinstance(x,
+                                             stl.Pred) else gpy.GRB.CONTINUOUS
         prefix = "z" if isinstance(x, stl.Pred) else "Z"
         i = len(self._z)
         name = "{}{}_{}".format(prefix, i, t)
@@ -72,9 +77,10 @@ def encode_state_evolution(store, problem):
     state = lambda t: pluck(t, store.x.values())
     dot = lambda x, y: sum(starmap(operator.mul, zip(x, y)))
     A, B = problem['state_space']['A'], problem['state_space']['B']
-    for t in range(store.steps-1):
+    for t in range(store.steps - 1):
         for i, (A_i, B_i) in enumerate(zip(A, B)):
-            store.model.addConstr(store.x[i][t+1] == dot(A_i, state(t)) + dot(B_i, inputs(t)))
+            store.model.addConstr(store.x[i][t + 1] == dot(A_i, state(t)) +
+                                  dot(B_i, inputs(t)))
 
 
 @singledispatch
@@ -105,7 +111,7 @@ def encode(problem):
     store.model.addConstr(store.z(phi, 0) == 1)
 
     # Create Objective
-    stl_vars =  mapcat(lambda phi: store.x[phi].values(), stl.walk(phi))
+    stl_vars = mapcat(lambda phi: store.x[phi].values(), stl.walk(phi))
     # TODO: support alternative objective functions
     store.model.setObjective(sum(stl_vars), gpy.GRB.MAXIMIZE)
 
@@ -120,12 +126,12 @@ def _(psi, t, store):
     z_t = store.z(psi, t)
 
     if psi.op in ("<", "<=", "="):
-        store.model.addConstr(const - x <= M*z_t - eps)
-        store.model.addConstr(x - const <= M*(1 - z_t) - eps)
+        store.model.addConstr(const - x <= M * z_t - eps)
+        store.model.addConstr(x - const <= M * (1 - z_t) - eps)
 
     if psi.op in (">", ">=", "="):
-        store.model.addConstr(x - const <= M*z_t - eps)
-        store.model.addConstr(const - x <= M*(1 - z_t) - eps)
+        store.model.addConstr(x - const <= M * z_t - eps)
+        store.model.addConstr(const - x <= M * (1 - z_t) - eps)
 
 
 @encode.register(stl.Or)
@@ -171,7 +177,7 @@ def encode_op(z_psi, elems, model, or_flag=False):
     if or_flag:
         rel = operator.ge
         lhs = z_phi_total
-    else: # AND
+    else:  # AND
         rel = operator.le
         lhs = 1 - len(elems) + z_phi_total
 

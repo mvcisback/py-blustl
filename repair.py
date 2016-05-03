@@ -7,16 +7,17 @@ oo = float('inf')
 unbounded = stl.Interval(0, oo)
 
 TEMPORAL_WEAKEN = {
-    stl.G: lambda x: stl.FG(x.arg, unbounded , unbounded),
-    stl.FG: lambda x: stl.GF(x.arg, unbounded , unbounded),
+    stl.G: lambda x: stl.FG(x.arg, unbounded, unbounded),
+    stl.FG: lambda x: stl.GF(x.arg, unbounded, unbounded),
     stl.GF: lambda x: stl.F(x.arg, unbounded),
 }
 
 TEMPORAL_STRENGTHEN = {
     stl.F: lambda x: stl.GF(x.arg, unbounded, unbounded),
-    stl.GF: lambda x: stl.FG(x.arg, unbounded , unbounded),
+    stl.GF: lambda x: stl.FG(x.arg, unbounded, unbounded),
     stl.FG: lambda x: stl.G(x.arg, unbounded),
 }
+
 
 def temporal_weaken(phi):
     """G -> FG -> GF -> F"""
@@ -29,8 +30,10 @@ def temporal_strengthen(phi):
 
 
 def _change_structure(phi, n, op):
-    return [op(phi, stl.G(stl.Pred(i, ineq, oo), unbounded)) for ineq, i
-            in product(("<=", ">="), range(0, n))]
+    return [op(phi, stl.G(
+        stl.Pred(i, ineq, oo), unbounded))
+            for ineq, i in product(
+                ("<=", ">="), range(0, n))]
 
 
 def weaken_structure(phi, n):
