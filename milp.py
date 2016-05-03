@@ -29,6 +29,7 @@ class Store(object):
         self.u = defaultdict(dict)
         self.w = defaultdict(dict)
         self.x = defaultdict(dict)
+        self.constr_lookup = dict
         self.problem = problem
 
         n = problem['params']['num_vars']
@@ -71,6 +72,10 @@ class Store(object):
     def steps(self):
         return int(ceil(self.H / self.dt))
 
+    def add_constr(self, constr, phi=None, kind=None):
+        r = self.model.addConstr(constr)
+        self.constr_lookup[r] = (phi, kind)
+
 
 def encode_state_evolution(store, problem):
     inputs = lambda t: chain(pluck(t, store.u.values()), pluck(t, store.w.values()))
@@ -79,8 +84,8 @@ def encode_state_evolution(store, problem):
     A, B = problem['state_space']['A'], problem['state_space']['B']
     for t in range(store.steps - 1):
         for i, (A_i, B_i) in enumerate(zip(A, B)):
-            store.model.addConstr(store.x[i][t + 1] == dot(A_i, state(t)) +
-                                  dot(B_i, inputs(t)))
+            constr = store.x[i][t + 1] == dot(A_i, state(t)) + store.dt*dot(B_i, inputs(t))
+            store.add_constr(constr, kind="Dynamics")
 
 
 @singledispatch
@@ -97,18 +102,18 @@ def encode(problem):
 
     # add input bounds u in [0, 1]
     for u in mapcat(dict.values, chain(store.u.values(), store.w.values())):
-        store.model.addConstr(u <= 1)
-        store.model.addConstr(u >= 0)
+        store.add_constr(u <= 1, kind="input_upper")
+        store.add_constr(u >= 0, kind="input_lower")
 
     encode_state_evolution(store, problem)
 
     for psi in problem['init']:
         x = store.x[psi.lit][0]
         const = psi.const
-        store.model.addConstr(x == const)
+        store.add_constr(x == const, kind="initial")
 
     # Assert top level true
-    store.model.addConstr(store.z(phi, 0) == 1)
+    store.add_constr(store.z(phi, 0) == 1, kind="Check_Feasible")
 
     # Create Objective
     stl_vars = mapcat(lambda phi: store.x[phi].values(), stl.walk(phi))
@@ -126,12 +131,12 @@ def _(psi, t, store):
     z_t = store.z(psi, t)
 
     if psi.op in ("<", "<=", "="):
-        store.model.addConstr(const - x <= M * z_t - eps)
-        store.model.addConstr(x - const <= M * (1 - z_t) - eps)
+        store.add_constr(const - x <= M * z_t - eps, kind="")
+        store.add_constr(x - const <= M * (1 - z_t) - eps, kind="")
 
     if psi.op in (">", ">=", "="):
-        store.model.addConstr(x - const <= M * z_t - eps)
-        store.model.addConstr(const - x <= M * (1 - z_t) - eps)
+        store.add_constr(x - const <= M * z_t - eps)
+        store.add_constr(const - x <= M * (1 - z_t) - eps)
 
 
 @encode.register(stl.Or)
@@ -168,10 +173,10 @@ def encode_temp_op(psi, t, store, or_flag=False):
     a, b = f(min(t + a, H)), f(min(t + b, H))
 
     elems = [store.z(psi.arg, t + i) for i in range(a, b + 1)]
-    encode_op(z_psi, elems, store.model, or_flag=or_flag)
+    encode_op(z_psi, elems, store, or_flag=or_flag)
 
 
-def encode_op(z_psi, elems, model, or_flag=False):
+def encode_op(z_psi, elems, store, or_flag=False):
     z_phi_total = sum(elems)
 
     if or_flag:
@@ -182,14 +187,14 @@ def encode_op(z_psi, elems, model, or_flag=False):
         lhs = 1 - len(elems) + z_phi_total
 
     for e in elems:
-        model.addConstr(rel(z_psi, e))
-    model.addConstr(rel(lhs, z_psi))
+        store.add_constr(rel(z_psi, e))
+    store.add_constr(rel(lhs, z_psi))
 
 
 @encode.register(stl.Neg)
 def _(psi, t, store):
     z_psi, z_phi = store.z(psi, t), store.z(psi.arg, t)
-    model.addConstr(z_psi == 1 - z_phi)
+    store.add_constr(z_psi == 1 - z_phi, psi)
 
 
 def encode_and_run(problem):
