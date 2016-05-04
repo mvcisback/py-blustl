@@ -2,7 +2,7 @@ num_vars: 4
 num_sys_inputs: 1
 num_env_inputs: 1
 time_horizon: 10
-dt: 0.1
+dt: 1
 
 init:
   - 'x0 = -5' # x
@@ -30,4 +30,4 @@ sys:
 
 state_space:
   A: '[0 1 0 0; 0 0 0 0; 0 0 1 0; 0 0 0 1]'
-  B: '[0 0; 1 0; 0 0; 0 1]'
+  B: '[0 0; 10 0; 0 0; 0 10]'

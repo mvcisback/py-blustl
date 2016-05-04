@@ -101,8 +101,8 @@ def encode_input_constr(store, env=False, fixed_inputs=None):
     inputs = u.values()
     if fixed_inputs:
         drop(len(fixed_inputs), inputs)
-        for i, t, val in fixed_inputs:
-            store.add_constr(u[i][t] == val)
+        for i, (t, val) in fixed_inputs:
+            store.add_constr(u[i][t] == val, kind=K.FIXED_INPUT)
 
     k1 = K.ENV_INPUT_UPPER if env else K.SYS_INPUT_UPPER
     k2 = K.ENV_INPUT_LOWER if env else K.SYS_INPUT_LOWER
@@ -116,9 +116,12 @@ def encode(params, u=None, w=None):
     """STL -> MILP"""
 
     sys = reduce(stl.And, params['sys'])
-    env = reduce(stl.And, params['env'], [])
+    if params['env']:
+        env = reduce(stl.And, params['env'])
+        phi = stl.Or(stl.Neg(env), sys)
+    else:
+        phi = sys
 
-    phi = stl.Or(stl.Neg(env), sys) if env else sys
     store = Store(params)
 
     # encode STL constraints
@@ -203,9 +206,8 @@ def encode_temp_op(psi, t, store, kind, or_flag=False):
     f = lambda x: int(ceil(x / store.dt))
     H = store.H
     a, b = f(min(t + a, H)), f(min(t + b, H))
-    
-    elems = [store.z(psi.arg, t + i) for i in range(a, b + 1) 
-             if t + i <= H]
+    elems = [store.z(psi.arg, t + i) for i in range(a, b) 
+             if t + i < H]
     encode_op(z_psi, elems, store, kind, psi, or_flag=or_flag)
 
 

@@ -1,10 +1,12 @@
 from enum import Enum, unique
 
 
+# 20
 @unique
 class Kind(Enum):
     INIT = 1
     DYNAMICS = 2
+    FIXED_INPUT = 19
     SYS_INPUT_UPPER = 3
     SYS_INPUT_LOWER = 4
     ENV_INPUT_UPPER = 5
