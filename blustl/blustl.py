@@ -20,7 +20,7 @@ def get_controller(params):
         params2['state_space']['B'] = hstack([B[:, n_sys:], B[:, :n_sys]])
         
         p1 = cegis(params1)
-        p2 = cegis(params1)
+        p2 = cegis(params2)
         while True:
             (J1, w1, iis_or_u1), (J2, w2, iis_or_u2) = next(p1), next(p2)
             if J1 == -oo:
@@ -50,6 +50,7 @@ def cegis(params):
         ws.add(w)
 
 
+# TODO: memomize
 def best_response(params, w):
     feasible, output = encode_and_run(params, w=w)
     if not feasible:

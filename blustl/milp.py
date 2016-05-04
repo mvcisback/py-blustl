@@ -123,12 +123,12 @@ def encode(params, u=None, w=None):
     # encode STL constraints
     encode(phi, 0, store)
 
-    encode_input_constr(store, u)
-    encode_input_constr(store, w, env=True)
+    encode_input_constr(store, fixed_inputs=u)
+    encode_input_constr(store, fixed_inputs=w, env=True)
 
     encode_state_evolution(store, params)
 
-    for psi in problem['init']:
+    for psi in params['init']:
         x = store.x[psi.lit][0]
         const = psi.const
         store.add_constr(x == const, kind=K.INIT)
