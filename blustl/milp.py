@@ -91,8 +91,8 @@ def encode_state_evolution(store, params):
     A, B = params['state_space']['A'], params['state_space']['B']
     for t in range(store.steps - 1):
         for i, (A_i, B_i) in enumerate(zip(A, B)):
-            constr = store.x[i][t + 1] == dot(A_i, state(t)) + store.dt * dot(
-                B_i, inputs(t))
+            dx = store.dt*(dot(A_i, state(t)) + dot(B_i, inputs(t)))
+            constr = store.x[i][t + 1] == store.x[i][t] + dx
             store.add_constr(constr, kind=K.DYNAMICS)
 
 
@@ -117,6 +117,7 @@ def encode(params, u=None, w=None):
 
     sys = reduce(stl.And, params['sys'])
     env = reduce(stl.And, params['env'], [])
+
     phi = stl.Or(stl.Neg(env), sys) if env else sys
     store = Store(params)
 
@@ -183,7 +184,7 @@ def _(psi, t, store):
 def encode_bool_op(psi, t, store, kind, or_flag):
     z_psi = store.z(psi, t)
     elems = [store.z(psi.left, t), store.z(psi.right, t)]
-    encode_op(z_psi, elems, model, psi, kind, or_flag=or_flag)
+    encode_op(z_psi, elems, store, kind, psi, or_flag=or_flag)
 
 
 @encode.register(stl.F)
@@ -202,8 +203,9 @@ def encode_temp_op(psi, t, store, kind, or_flag=False):
     f = lambda x: int(ceil(x / store.dt))
     H = store.H
     a, b = f(min(t + a, H)), f(min(t + b, H))
-
-    elems = [store.z(psi.arg, t + i) for i in range(a, b + 1)]
+    
+    elems = [store.z(psi.arg, t + i) for i in range(a, b + 1) 
+             if t + i <= H]
     encode_op(z_psi, elems, store, kind, psi, or_flag=or_flag)
 
 
@@ -225,7 +227,7 @@ def encode_op(z_psi, elems, store, (k1, k2), phi, or_flag=False):
 @encode.register(stl.Neg)
 def _(psi, t, store):
     z_psi, z_phi = store.z(psi, t), store.z(psi.arg, t)
-    store.add_constr(z_psi == 1 - z_phi, psi, kind=K.Neg)
+    store.add_constr(z_psi == 1 - z_phi, psi, kind=K.NEG)
 
 
 def encode_and_run(params, u=None, w=None):

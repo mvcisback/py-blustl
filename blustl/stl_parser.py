@@ -15,7 +15,7 @@ sys = phi (_ rank)?
 
 rank = "[" const "]"
 
-phi = pred / f / fg / gf / g / or / and
+phi = g / f / gf / fg / pred / or / and
 phi2 = pred / or2 / and2
 pred = id _ op _ const
 
@@ -161,7 +161,7 @@ def from_yaml(content):
     n_sys = g['num_sys_inputs']
     n_env = g['num_env_inputs']
     assert g['state_space']['A'].shape == (n, n)
-    assert g['state_space']['B'].shape == (n_sys + n_env, n)
+    assert g['state_space']['B'].shape == (n, n_sys + n_env)
 
     return g
 
