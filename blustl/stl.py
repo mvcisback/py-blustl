@@ -6,7 +6,7 @@ class STL(ast.Node):
     pass
 
 
-class Path_STL(STL):
+class ModalOp(STL):
     def children(self):
         return [self.arg]
 
@@ -55,7 +55,7 @@ class Interval(ast.Node):
         return [self.lower, self.upper]
 
 
-class F(Path_STL):
+class F(ModalOp):
     arg = ast.field(STL)
     interval = ast.field(Interval)
 
@@ -63,7 +63,7 @@ class F(Path_STL):
         return "⋄{}({})".format(self.interval, self.arg)
 
 
-class G(Path_STL):
+class G(ModalOp):
     arg = ast.field(STL)
     interval = ast.field(Interval)
 

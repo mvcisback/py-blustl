@@ -12,26 +12,34 @@ oo = float('inf')
 unbounded = stl.Interval(0, oo)
 
 TEMPORAL_WEAKEN = {
-    stl.G: lambda x: stl.FG(x.arg, unbounded, unbounded),
-    #stl.FG: lambda x: stl.GF(x.arg, unbounded, unbounded),
-    #stl.GF: lambda x: stl.F(x.arg, unbounded),
+    "G": lambda x: stl.F(stl.G(x.arg, x.interval), unbounded),
+    "FG": lambda x: stl.G(stl.F(x.arg, x.interval), unbounded),
+    "GF": lambda x: stl.F(x.arg, x.interval),
 }
 
 TEMPORAL_STRENGTHEN = {
-    stl.F: lambda x: stl.GF(x.arg, unbounded, unbounded),
-    #stl.GF: lambda x: stl.FG(x.arg, unbounded, unbounded),
-    #stl.FG: lambda x: stl.G(x.arg, unbounded),
+    "F": lambda x: stl.G(stl.F(x.arg, x.interval), unbounded),
+    "GF": lambda x: stl.F(stl.G(x.arg, x.interval), unbounded),
+    "FG": lambda x: stl.G(x.arg, x.interval),
 }
+
+TYPE_STR = {stl.F: "F", stl.G: "G"}
+
+def op_type(phi):
+    op = TYPE_STR.get(type(phi))
+    if isinstance(phi.arg, stl.ModalOp):
+       op += TYPE_STR.get(type(phi.arg))
+    return op
 
 
 def temporal_weaken(phi):
     """G -> FG -> GF -> F"""
-    return TEMPORAL_WEAKEN.get(type(phi), lambda x: x)(phi)
+    return TEMPORAL_WEAKEN.get(op_type(phi), lambda x: x)(phi)
 
 
 def temporal_strengthen(phi):
     """G <- FG <- GF <- F"""
-    return TEMPORAL_STRENGTHEN.get(type(phi), lambda x: x)(phi)
+    return TEMPORAL_STRENGTHEN.get(op_type(phi), lambda x: x)(phi)
 
 
 def _change_structure(phi, n, op):
@@ -52,23 +60,25 @@ def strengthen_structure(phi, n):
 
 
 def tune_params(phi):
-    raise NotImplemented
+    raise NotImplementedError
 
 
 def all_repairs(psi):
-    raise NotImplemented
+    raise NotImplementedError
 
 def candidates(iis):
-    return mapcat(all_repairs, (x for x, k in iis if k not in UNREPAIRABLE))
+    return mapcat(
+        all_repairs, (x for x, k in iis if k not in UNREPAIRABLE))
 
 
-def repair(phi):
+def repair_oracle(params):
     iis = yield
-    q = deque((phi, [_iis])) # iis queue
+    q = deque([iis, params]) # iis queue
     while len(q) > 0:
-        phi, iis = q.pop()
+        iis, params = q.pop()
 
         for c in candidates(iis):
-            yield c
+            # TODO: apply candidate repair to params
+            yield params
             _iis = yield
-            q.appendleft(c, _iis)
+            q.appendleft(_iis)

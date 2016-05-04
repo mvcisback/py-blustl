@@ -4,19 +4,25 @@ from functools import partial
 
 from numpy import hstack
 
+import stl
 import milp
 from constraint_kinds import Kind as K
 
 oo = float('inf')
 
-def get_controller(params):
+def p2_params(params):
+    params2 = params.copy()    
+    n_sys = params2['num_sys_inputs'] = params['num_env_inputs']
+    B = params['state_space']['B']
+    params2['state_space']['B'] = hstack([B[:, n_sys:], B[:, :n_sys]])
+    params2['sys'] = stl.Neg(params['sys'])
+    return params2
+
+
+def controller_oracle(params):
     if params['num_env_inputs'] > 0: # adversarial
         params1 = params
-        params2 = params.copy()
-
-        n_sys = params2['num_sys_inputs'] = params1['num_env_inputs']
-        B = params['state_space']['B']
-        params2['state_space']['B'] = hstack([B[:, n_sys:], B[:, :n_sys]])
+        params2 = p2_params(params)
         
         p1 = cegis(params1)
         p2 = cegis(params2)
@@ -30,7 +36,8 @@ def get_controller(params):
             p2.send(iis_or_u1)
 
     else:
-        return best_response(params, w=None)
+        J, w, iis = best_response(params, w=None)
+        return (J != -oo), w, iis
 
 
 def cegis(params):
@@ -54,8 +61,19 @@ def best_response(params, w):
     feasible, output = milp.encode_and_run(params, w=w)
     if not feasible:
         iis = output
-        # TODO: infeasible doesn't mean -oo
         return -oo, w, iis
     else:
         J, u = output
         return J, w, u
+
+
+def learn_spec(params):
+    r = repair_oracle(params)
+    next(r)
+    # TODO termination condition
+    while True:
+        success, u, iis = get_controller(params)
+        if success:
+            return params, u 
+        r.send(iis)
+        params = next(r)
