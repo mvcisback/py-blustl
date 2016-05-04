@@ -1,9 +1,8 @@
 # TODO: factor out encode recursive structure into a generator
 # TODO: add tests where variables are preapplied to constraints
-# TODO: implement adversarial w
-# - optionally fix u,w rather than bounding between [0,1]
 # TODO: Compute eps and M based on x and A, B, dt
 # TODO: encode STL robustness metric
+# TODO: make inital conditions part of phi
 
 from __future__ import division
 
@@ -113,7 +112,7 @@ def encode_input_constr(store, env=False, fixed_inputs=None):
 
 
 @singledispatch
-def encode(params):
+def encode(params, u=None, w=None):
     """STL -> MILP"""
 
     sys = reduce(stl.And, params['sys'])
@@ -124,12 +123,12 @@ def encode(params):
     # encode STL constraints
     encode(phi, 0, store)
 
-    encode_input_constr(store, params['u'])
-    encode_input_constr(store, params['w'], env=True)
+    encode_input_constr(store, u)
+    encode_input_constr(store, w, env=True)
 
     encode_state_evolution(store, params)
 
-    for psi in params['init']:
+    for psi in problem['init']:
         x = store.x[psi.lit][0]
         const = psi.const
         store.add_constr(x == const, kind=K.INIT)
@@ -229,8 +228,8 @@ def _(psi, t, store):
     store.add_constr(z_psi == 1 - z_phi, psi, kind=K.Neg)
 
 
-def encode_and_run(params):
-    model, store = encode(params)
+def encode_and_run(params, u=None, w=None):
+    model, store = encode(params, u, w)
     model.optimize()
 
     if model.status == gpy.GRB.Status.INF_OR_UNBD:
@@ -248,6 +247,7 @@ def encode_and_run(params):
     elif model.status == gpy.GRB.Status.OPTIMAL:
         f = lambda x: x[0][0]
         solution = group_by(f, [(x.VarName, x.X) for x in model.getVars()])
-        return (True, pluck(1, sorted(solution['u'])))
+        cost = 0 # TODO
+        return (True, (cost, pluck(1, sorted(solution['u']))))
     else:
         raise NotImplementedError

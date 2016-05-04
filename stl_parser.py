@@ -6,6 +6,8 @@ import numpy as np
 
 import stl
 
+# TODO: Support parsing fixed inputs
+
 # TODO: allow parsing multiple ors & ands together
 STL_GRAMMAR = Grammar(u'''
 env = phi
@@ -160,8 +162,6 @@ def from_yaml(content):
     n_env = g['num_env_inputs']
     assert g['state_space']['A'].shape == (n, n)
     assert g['state_space']['B'].shape == (n_sys + n_env, n)
-    g['u'] = []
-    g['w'] = []
 
     return g
 
