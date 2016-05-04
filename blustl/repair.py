@@ -1,21 +1,26 @@
 from functools import partial
 from itertools import product
+from collections import deque
+
+from funcy import mapcat
 
 import stl
+from constraint_kinds import UNREPAIRABLE, Kind as K
+
 
 oo = float('inf')
 unbounded = stl.Interval(0, oo)
 
 TEMPORAL_WEAKEN = {
     stl.G: lambda x: stl.FG(x.arg, unbounded, unbounded),
-    stl.FG: lambda x: stl.GF(x.arg, unbounded, unbounded),
-    stl.GF: lambda x: stl.F(x.arg, unbounded),
+    #stl.FG: lambda x: stl.GF(x.arg, unbounded, unbounded),
+    #stl.GF: lambda x: stl.F(x.arg, unbounded),
 }
 
 TEMPORAL_STRENGTHEN = {
     stl.F: lambda x: stl.GF(x.arg, unbounded, unbounded),
-    stl.GF: lambda x: stl.FG(x.arg, unbounded, unbounded),
-    stl.FG: lambda x: stl.G(x.arg, unbounded),
+    #stl.GF: lambda x: stl.FG(x.arg, unbounded, unbounded),
+    #stl.FG: lambda x: stl.G(x.arg, unbounded),
 }
 
 
@@ -48,3 +53,22 @@ def strengthen_structure(phi, n):
 
 def tune_params(phi):
     raise NotImplemented
+
+
+def all_repairs(psi):
+    raise NotImplemented
+
+def candidates(iis):
+    return mapcat(all_repairs, (x for x, k in iis if k not in UNREPAIRABLE))
+
+
+def repair(phi):
+    iis = yield
+    q = deque((phi, [_iis])) # iis queue
+    while len(q) > 0:
+        phi, iis = q.pop()
+
+        for c in candidates(iis):
+            yield c
+            _iis = yield
+            q.appendleft(c, _iis)

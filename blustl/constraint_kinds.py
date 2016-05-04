@@ -21,3 +21,10 @@ class Kind(Enum):
     OR_TOTAL = 16
     AND = 17
     AND_TOTAL = 18
+
+
+UNREPAIRABLE = {
+    Kind.INIT,
+    Kind.DYNAMICS,
+    Kind.ASSERT_FEASIBLE
+}

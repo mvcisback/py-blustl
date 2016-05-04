@@ -5,8 +5,7 @@ from functools import partial
 from numpy import hstack
 
 import milp
-import repair
-from constraint_kinds import Kinds as K
+from constraint_kinds import Kind as K
 
 oo = float('inf')
 
@@ -52,7 +51,7 @@ def cegis(params):
 
 # TODO: memomize
 def best_response(params, w):
-    feasible, output = encode_and_run(params, w=w)
+    feasible, output = milp.encode_and_run(params, w=w)
     if not feasible:
         iis = output
         # TODO: infeasible doesn't mean -oo
