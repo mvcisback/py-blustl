@@ -10,7 +10,6 @@ setup(name='blustl',
       install_requires=[
           'funcy',
           'parsimonious', 
-          'pyast',
           'PyYAML',
           'singledispatch',
           'enum34',
