@@ -14,7 +14,8 @@ setup(name='blustl',
           'PyYAML',
           'singledispatch',
           'enum34',
-          'numpy'
+          'numpy',
+          'nose2',
       ],
       packages=find_packages(),
 )

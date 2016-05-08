@@ -1,26 +1,7 @@
 # -*- coding: utf-8 -*-
-import pyast as ast
+from collections import namedtuple
 
-
-class STL(ast.Node):
-    pass
-
-
-class ModalOp(STL):
-    def children(self):
-        return [self.arg]
-
-
-class BinOpSTL(STL):
-    def children(self):
-        return [self.left, self.right]
-
-
-class Pred(STL):
-    lit = ast.field((int, ))
-    op = ast.field(("<", ">", ">=", "<=", "="))
-    const = ast.field((int, float))
-
+class Pred(namedtuple('P', ['lit', 'op', 'const'])):
     def __repr__(self):
         return "x{} {} {}".format(self.lit, self.op, self.const)
 
@@ -28,26 +9,7 @@ class Pred(STL):
         return []
 
 
-class Or(BinOpSTL):
-    left = ast.field(STL)
-    right = ast.field(STL)
-
-    def __repr__(self):
-        return "({}) ∨ ({})".format(self.left, self.right)
-
-
-class And(BinOpSTL):
-    left = ast.field(STL)
-    right = ast.field(STL)
-
-    def __repr__(self):
-        return "({}) ∧ ({})".format(self.left, self.right)
-
-
-class Interval(ast.Node):
-    lower = ast.field((int, float))
-    upper = ast.field((int, float))
-
+class Interval(namedtuple('I', ['lower', 'upper'])):
     def __repr__(self):
         return "[{},{}]".format(self.lower, self.upper)
 
@@ -55,25 +17,39 @@ class Interval(ast.Node):
         return [self.lower, self.upper]
 
 
-class F(ModalOp):
-    arg = ast.field(STL)
-    interval = ast.field(Interval)
+class NaryOpSTL(namedtuple('NaryOp', ['args'])):
+    OP = "?"
+    def __repr__(self):
+        rep = "({})" + " {op} ({})"*(len(self.args) - 1)
+        return rep.format(*self.args, op=self.OP)
 
+    def children(self):
+        return self.args
+
+
+class Or(NaryOpSTL):
+    OP = "∨"
+
+class And(NaryOpSTL):
+    OP = "∧"
+
+
+class ModalOp(namedtuple('ModalOp', ['interval', 'arg'])):
+    def children(self):
+        return [self.arg]
+
+
+class F(ModalOp):
     def __repr__(self):
         return "⋄{}({})".format(self.interval, self.arg)
 
 
 class G(ModalOp):
-    arg = ast.field(STL)
-    interval = ast.field(Interval)
-
     def __repr__(self):
         return "□{}({})".format(self.interval, self.arg)
 
 
-class Neg(STL):
-    arg = ast.field(STL)
-
+class Neg(namedtuple('Neg', ['arg'])):
     def __repr__(self):
         return "¬({})".format(self.arg)
 

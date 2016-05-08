@@ -26,7 +26,6 @@ DEFAULT_NAME = 'controller_synth'
 
 class Store(object):
     def __init__(self, params):
-        "docstring"
         self.model = gpy.Model(name=params.get('name', DEFAULT_NAME))
         self._z = defaultdict(dict)
         self.u = defaultdict(dict)
@@ -43,7 +42,7 @@ class Store(object):
         # Add state, input, and env vars
         elems = [('x', n, self.x), ('u', n_sys, self.u), ('w', n_env, self.w)]
         for pre, num, d in elems:
-            for i, t in product(range(num), range(self.steps)):
+            for i, t in product(range(num), range(self.steps + 1)):
                 name = "{}{}_{}".format(pre, i, t)
                 d[i][t] = self.model.addVar(vtype=gpy.GRB.CONTINUOUS,
                                             name=name)
@@ -206,7 +205,7 @@ def encode_temp_op(psi, t, store, kind, or_flag=False):
     f = lambda x: int(ceil(x / store.dt))
     H = store.H
     a, b = f(min(t + a, H)), f(min(t + b, H))
-    elems = [store.z(psi.arg, t + i) for i in range(a, b) 
+    elems = [store.z(psi.arg, t + i) for i in range(a, b + 1)
              if t + i < H]
     encode_op(z_psi, elems, store, kind, psi, or_flag=or_flag)
 

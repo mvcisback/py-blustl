@@ -89,28 +89,31 @@ class STLVisitor(NodeVisitor):
         return stl.Interval(left, right)
 
     def visit_f(self, _, (_1, interval, phi)):
-        return stl.F(phi, interval)
+        return stl.F(interval, phi)
 
     def visit_g(self, _, (_1, interval, phi)):
-        return stl.G(phi, interval)
+        return stl.G(interval, phi)
 
     def visit_fg(self, _, (_1, i1, _2, i2, p)):
-        return stl.F(stl.G(p, i2), i2)
+        return stl.F(i1, stl.G(i2, p))
 
     def visit_gf(self, _, (_1, i1, _2, i2, p)):
-        return stl.G(stl.F(p, i2), i1)
+        return stl.G(i1, stl.F(i2, p))
 
-    def visit_or(self, _, (phi1, _2, _3, _4, phi2)):
-        return stl.Or(phi1, phi2)
+    def binop_visiter(self, _, (phi1, _2, _3, _4, phi2), op):
+        argL = phi1.args if isinstance(phi1, op) else [phi1]
+        argR = phi2.args if isinstance(phi2, op) else [phi2]
+        return op(argL + argR)
 
-    def visit_or2(self, _, (phi1, _2, _3, _4, phi2)):
-        return stl.Or(phi1, phi2)
+    def visit_or(self, *args):
+        return self.binop_visiter(*args, op=stl.Or)
 
-    def visit_and(self, _, (phi1, _2, _3, _4, phi2)):
-        return stl.And(phi1, phi2)
+    visit_or2 = visit_or
 
-    def visit_and2(self, _, (phi1, _2, _3, _4, phi2)):
-        return stl.And(phi1, phi2)
+    def visit_and(self, *args):
+        return self.binop_visiter(*args, op=stl.And)
+
+    visit_and2 = visit_and
 
     def visit_op(self, op, _):
         return op.text
@@ -164,12 +167,6 @@ def from_yaml(content):
     assert g['state_space']['B'].shape == (n, n_sys + n_env)
 
     return g
-
-
-def main():
-    with open('example1.stl', 'r') as f:
-        print(from_yaml(f))
-
 
 if __name__ == '__main__':
     main()
