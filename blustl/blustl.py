@@ -1,6 +1,7 @@
 """
 """
 from functools import partial
+from copy import deepcopy
 
 from numpy import hstack
 
@@ -11,65 +12,59 @@ from constraint_kinds import Kind as K
 oo = float('inf')
 
 def p2_params(params):
-    params2 = params.copy()    
+    params2 = deepcopy(params)
     n_sys = params2['num_sys_inputs'] = params['num_env_inputs']
     B = params['state_space']['B']
     params2['state_space']['B'] = hstack([B[:, n_sys:], B[:, :n_sys]])
-    params2['sys'] = stl.Neg(params['sys'])
+    params2['sys'] = [stl.Neg(stl.And(tuple(params['sys'])))]
     return params2
 
 
 def controller_oracle(params):
-    if params['num_env_inputs'] > 0: # adversarial
+    J0, u2, u1, iis0 = best_response(params, w=None)
+    if J0 != -oo and params['num_env_inputs'] > 0: # adversarial
         params1 = params
         params2 = p2_params(params)
         
-        p1 = cegis(params1)
-        p2 = cegis(params2)
+        p1 = cegis(params1, u2)
+        p2 = cegis(params2, u1)
+        (J1, w1, u1, iis1) = next(p1)
+        (J2, w2, u2, iis2) = next(p2)
         while True:
-            (J1, w1, iis_or_u1), (J2, w2, iis_or_u2) = next(p1), next(p2)
             if J1 == -oo:
-                return False, w1, iis_or_u1 # iis
+                return False, w1, iis1 # iis
             elif J2 == -oo:
-                return True, w2, iis_or_u2 # iis, Solved
-            p1.send(iis_or_u2)
-            p2.send(iis_or_u1)
+                return True, w2, iis2 # iis, Solved
+
+            (J1, w1, u1, iis1) = p1.send(u2)
+            (J2, w2, u2, iis2) = p2.send(u1)
 
     else:
-        J, w, iis = best_response(params, w=None)
-        return (J != -oo), w, iis
+        return False, u2, u1, iis0
 
 
-def cegis(params):
-    ws = {[0]*params['num_env_inputs']}
+def cegis(params, w0):
+    ws = {w0}
     costs = {}
     while True:
-        responses = map(partial(best_response, partial), ws)
-        J, w, iis_or_u = min(responses)
-        yield J, w, iis_or_u
+        responses = [best_response(params, w=w) for w in ws]
+        
+        J, w, u, iis = min(responses)
+        w = yield J, w, u, iis
 
-        if J == -oo:
-            break # stop
-
-        cost[u] = iis_or_u # u
-        w = yield
+        costs[u] = J
         ws.add(w)
 
 
-def bootstrap():
-    # TODO: compute initial feasible u and w
-    pass
-
-
 # TODO: memomize
-def best_response(params, w):
+def best_response(params, w=None):
     feasible, output = milp.encode_and_run(params, w=w)
     if not feasible:
         iis = output
-        return -oo, w, iis
+        return -oo, w, None, iis
     else:
-        J, u = output
-        return J, w, u
+        J, inputs = output
+        return J, inputs['w'], inputs['u'], None
 
 
 def learn_spec(params):

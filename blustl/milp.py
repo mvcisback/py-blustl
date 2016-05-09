@@ -101,7 +101,7 @@ def encode_input_constr(store, env=False, fixed_inputs=None):
     inputs = u.values()
     if fixed_inputs:
         inputs = drop(len(fixed_inputs), inputs)
-        for i, (t, val) in fixed_inputs:
+        for (i, t), val in fixed_inputs:
             store.add_constr(u[i][t] == val, kind=K.FIXED_INPUT)
 
 @singledispatch
@@ -240,11 +240,14 @@ def encode_and_run(params, u=None, w=None):
 
     elif model.status == gpy.GRB.Status.OPTIMAL:
         f = lambda x: x[0][0]
+        f2 = lambda x: (tuple(map(int, x[0][1:].split('_'))), x[1])
         solution = group_by(f, [(x.VarName, x.X) for x in model.getVars()])
+        solution['u'] = map(f2, solution['u'])
+        solution['w'] = map(f2, solution['w'])
         cost = 0 # TODO
         return (True, (cost, {
-            'u': pluck(1, sorted(solution['u'])),
-            'w': pluck(1, sorted(solution['w']))
+            'u': tuple(sorted(solution['u'])),
+            'w': tuple(sorted(solution['w']))
         }))
     else:
         raise NotImplementedError
