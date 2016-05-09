@@ -10,9 +10,10 @@ from math import ceil
 from itertools import product, chain, starmap
 import operator
 from collections import defaultdict, Counter
+from functools import partial
 
 from singledispatch import singledispatch
-from funcy import mapcat, pluck, group_by, drop
+from funcy import mapcat, pluck, group_by, drop, walk_values, compose
 import gurobipy as gpy
 
 import stl
@@ -22,7 +23,7 @@ DEFAULT_NAME = 'controller_synth'
 
 
 class Store(object):
-    def __init__(self, params):
+    def __init__(self, params, x=None, u=None, w=None):
         self.model = gpy.Model(name=params.get('name', DEFAULT_NAME))
         self._z = defaultdict(dict)
         self.u = defaultdict(dict)
@@ -38,14 +39,20 @@ class Store(object):
         n_env = params['num_env_inputs']
 
         # Add state, input, and env vars
-        elems = [('x', n, self.x), ('u', n_sys, self.u), ('w', n_env, self.w)]
-        for pre, num, d in elems:
+        elems = [('x', n, self.x, x), ('u', n_sys, self.u, u), 
+                 ('w', n_env, self.w, w)]
+
+        for pre, num, d, fixed in elems:
             # TODO: support taking bounds from phi/params
+            d2 = dict(fixed) if fixed else {}
             ub, lb = (100, -100) if pre == 'x' else (1, 0)
             for i, t in product(range(num), range(self.steps + 1)):
-                name = "{}{}_{}".format(pre, i, t)
-                d[i][t] = self.model.addVar(vtype=gpy.GRB.CONTINUOUS,
-                                            name=name, lb=lb, ub=ub)
+                if (i, t) in d2:
+                    d[i][t] = d2[i, t]
+                else:
+                    name = "{}{}_{}".format(pre, i, t)
+                    d[i][t] = self.model.addVar(vtype=gpy.GRB.CONTINUOUS,
+                                                name=name, lb=lb, ub=ub)
 
         self.model.update()
 
@@ -77,6 +84,9 @@ class Store(object):
         return int(ceil(self.H / self.dt))
 
     def add_constr(self, constr, phi=None, kind=None):
+        if not isinstance(constr, gpy.TempConstr):
+            return  # only add if symbolic
+
         self._constr_counter.update([kind])
         name = "{}{}".format(kind.name, self._constr_counter[kind])
         r = self.model.addConstr(constr, name=name)
@@ -96,27 +106,15 @@ def encode_state_evolution(store, params):
             store.add_constr(constr, kind=K.DYNAMICS)
 
 
-def encode_input_constr(store, env=False, fixed_inputs=None):
-    u = store.w if env else store.u
-    inputs = u.values()
-    if fixed_inputs:
-        inputs = drop(len(fixed_inputs), inputs)
-        for (i, t), val in fixed_inputs:
-            store.add_constr(u[i][t] == val, kind=K.FIXED_INPUT)
-
 @singledispatch
-def encode(params, u=None, w=None):
+def encode(params, x=None, u=None, w=None):
     """STL -> MILP"""
 
     phi = stl.And(tuple(params['sys'] + params.get('env', [])))
-    store = Store(params)
+    store = Store(params, x=x, u=u, w=w)
 
     # encode STL constraints
     encode(phi, 0, store)
-
-    encode_input_constr(store, fixed_inputs=u)
-    encode_input_constr(store, fixed_inputs=w, env=True)
-
     encode_state_evolution(store, params)
 
     for psi in params['init']:
@@ -222,8 +220,8 @@ def _(psi, t, store):
     store.add_constr(z_psi == 1 - z_phi, psi, kind=K.NEG)
 
 
-def encode_and_run(params, u=None, w=None):
-    model, store = encode(params, u, w)
+def encode_and_run(params, x=None, u=None, w=None):
+    model, store = encode(params, x=x, u=u, w=w)
     model.optimize()
 
     if model.status == gpy.GRB.Status.INF_OR_UNBD:
@@ -241,13 +239,10 @@ def encode_and_run(params, u=None, w=None):
     elif model.status == gpy.GRB.Status.OPTIMAL:
         f = lambda x: x[0][0]
         f2 = lambda x: (tuple(map(int, x[0][1:].split('_'))), x[1])
+        f3 = compose(tuple, sorted, partial(map, f2))
         solution = group_by(f, [(x.VarName, x.X) for x in model.getVars()])
-        solution['u'] = map(f2, solution['u'])
-        solution['w'] = map(f2, solution['w'])
+        solution = walk_values(f3, solution)
         cost = 0 # TODO
-        return (True, (cost, {
-            'u': tuple(sorted(solution['u'])),
-            'w': tuple(sorted(solution['w']))
-        }))
+        return (True, (cost, solution))
     else:
         raise NotImplementedError
