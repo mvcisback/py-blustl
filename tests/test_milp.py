@@ -6,6 +6,7 @@ from blustl import milp, stl_parser
 
 @params(
     ('examples/feasible_example.yaml', True),
+    ('examples/feasible2_example.yaml', True),
     ('examples/infeasible_example.yaml', False)
 )
 def test_feasibility(path, feasibility):

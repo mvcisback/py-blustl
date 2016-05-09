@@ -108,13 +108,7 @@ def encode_input_constr(store, env=False, fixed_inputs=None):
 def encode(params, u=None, w=None):
     """STL -> MILP"""
 
-    sys = stl.And(tuple(params['sys']))
-    if params['env']:
-        env = stl.And(tuple(params['env']))
-        phi = stl.Or((stl.Neg(env), sys))
-    else:
-        phi = sys
-
+    phi = stl.And(tuple(params['sys'] + params.get('env', [])))
     store = Store(params)
 
     # encode STL constraints
@@ -199,12 +193,11 @@ def _(psi, t, store):
 
 def encode_temp_op(psi, t, store, kind, or_flag=False):
     z_psi = store.z(psi, t)
-    a, b = psi.interval.lower, psi.interval.upper
     f = lambda x: int(ceil(x / store.dt))
-    H = store.H
-    a, b = f(min(t + a, H)), f(min(t + b, H))
+    a, b = f(psi.interval.lower), f(psi.interval.upper)
     elems = [store.z(psi.arg, t + i) for i in range(a, b + 1)
-             if t + i <= H]
+             if t + i <= store.steps]
+
     encode_op(z_psi, elems, store, kind, psi, or_flag=or_flag)
 
 
@@ -249,6 +242,9 @@ def encode_and_run(params, u=None, w=None):
         f = lambda x: x[0][0]
         solution = group_by(f, [(x.VarName, x.X) for x in model.getVars()])
         cost = 0 # TODO
-        return (True, (cost, pluck(1, sorted(solution['u']))))
+        return (True, (cost, {
+            'u': pluck(1, sorted(solution['u'])),
+            'w': pluck(1, sorted(solution['w']))
+        }))
     else:
         raise NotImplementedError

@@ -15,7 +15,7 @@ i2 = stl.Interval(2., 3.)
 ex2 = ('⋄[0,1](x1 > 2)', stl.F(i1, ex1[1]))
 ex3 = ('□[2,3]⋄[0,1](x1 > 2)', stl.G(i2, ex2[1]))
 ex4 = ('(x1 > 2) or ((x1 > 2) or (x1 > 2))', 
-       stl.Or([ex1[1], ex1[1], ex1[1]]))
+       stl.Or((ex1[1], ex1[1], ex1[1])))
 
 example_ymls = glob('examples/*')
 

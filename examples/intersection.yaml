@@ -1,7 +1,7 @@
 num_vars: 4
 num_sys_inputs: 1
 num_env_inputs: 1
-time_horizon: 10
+time_horizon: 4
 dt: 1
 
 init:
@@ -12,21 +12,21 @@ init:
 
 env:
   # Almost obeys speed limit
-  - 'G[0, 10](x3 < 10.1)'
+  - 'G[0, 4](x3 < 10.1)'
   # No reversing
-  - 'G[0, 10](x3 >= 0)'
+  - 'G[0, 4](x3 >= 0)'
   # Doesn't park in intersection
-  - 'G[0, 10]F[0, 1]((x2 < 0) or (x2 > 5))'
+  - 'G[0, 4]F[0, 1]((x2 < 0) or (x2 > 5))'
   
 sys:
   # Pass intersection
-  - 'F[0,10](x0 > 5)'
+  - 'F[0,4](x0 > 5)'
   # Don't crash
-  - 'G[0, 10](((x0 < 0) or (x0 > 5)) or ((x2 < 0) or (x2 > 5)))'
+  - 'G[0, 4](((x0 < 0) or (x0 > 5)) or ((x2 < 0) or (x2 > 5)))'
   # Obey speed limit
-  - 'G[0, 10](x1 <= 10)'
+  - 'G[0, 4](x1 <= 10)'
   # No reversing
-  - 'G[0, 10](x1 >= 0)'
+  - 'G[0, 4](x1 >= 0)'
 
 state_space:
   A: '[0 1 0 0; 0 0 0 0; 0 0 0 1; 0 0 0 0]'
