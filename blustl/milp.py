@@ -18,11 +18,8 @@ import gurobipy as gpy
 import stl
 from constraint_kinds import Kind as K
 
-M = 10000  # TODO
-eps = 0.01  # TODO
-
-
 DEFAULT_NAME = 'controller_synth'
+
 
 class Store(object):
     def __init__(self, params):
@@ -42,10 +39,12 @@ class Store(object):
         # Add state, input, and env vars
         elems = [('x', n, self.x), ('u', n_sys, self.u), ('w', n_env, self.w)]
         for pre, num, d in elems:
+            # TODO: support taking bounds from phi/params
+            ub, lb = (10, -10) if pre == 'x' else (1, 0)
             for i, t in product(range(num), range(self.steps + 1)):
                 name = "{}{}_{}".format(pre, i, t)
                 d[i][t] = self.model.addVar(vtype=gpy.GRB.CONTINUOUS,
-                                            name=name)
+                                            name=name, lb=lb, ub=ub)
 
         self.model.update()
 
@@ -88,7 +87,7 @@ def encode_state_evolution(store, params):
     state = lambda t: pluck(t, store.x.values())
     dot = lambda x, y: sum(starmap(operator.mul, zip(x, y)))
     A, B = params['state_space']['A'], params['state_space']['B']
-    for t in range(store.steps - 1):
+    for t in range(store.steps):
         for i, (A_i, B_i) in enumerate(zip(A, B)):
             dx = store.dt*(dot(A_i, state(t)) + dot(B_i, inputs(t)))
             constr = store.x[i][t + 1] == store.x[i][t] + dx
@@ -99,25 +98,18 @@ def encode_input_constr(store, env=False, fixed_inputs=None):
     u = store.w if env else store.u
     inputs = u.values()
     if fixed_inputs:
-        drop(len(fixed_inputs), inputs)
+        inputs = drop(len(fixed_inputs), inputs)
         for i, (t, val) in fixed_inputs:
             store.add_constr(u[i][t] == val, kind=K.FIXED_INPUT)
-
-    k1 = K.ENV_INPUT_UPPER if env else K.SYS_INPUT_UPPER
-    k2 = K.ENV_INPUT_LOWER if env else K.SYS_INPUT_LOWER
-    for u in mapcat(dict.values, inputs):
-        store.add_constr(u <= 1, kind=k1)
-        store.add_constr(u >= 0, kind=k2)
-
 
 @singledispatch
 def encode(params, u=None, w=None):
     """STL -> MILP"""
 
-    sys = reduce(stl.And, params['sys'])
+    sys = stl.And(tuple(params['sys']))
     if params['env']:
-        env = reduce(stl.And, params['env'])
-        phi = stl.Or(stl.Neg(env), sys)
+        env = stl.And(tuple(params['env']))
+        phi = stl.Or((stl.Neg(env), sys))
     else:
         phi = sys
 
@@ -140,10 +132,8 @@ def encode(params, u=None, w=None):
     store.add_constr(store.z(phi, 0) == 1, kind=K.ASSERT_FEASIBLE)
 
     # Create Objective
-    stl_vars = mapcat(dict.values, store._z.values())
     # TODO: support alternative objective functions
-
-    store.model.setObjective(sum(stl_vars), gpy.GRB.MAXIMIZE)
+    store.model.setObjective(0, gpy.GRB.MAXIMIZE)
 
     store.model.update()
     return store.model, store
@@ -152,8 +142,13 @@ def encode(params, u=None, w=None):
 @encode.register(stl.Pred)
 def _(psi, t, store):
     const = psi.const
+
     x = store.x[psi.lit][t]
     z_t = store.z(psi, t)
+
+    M = 1000  # TODO
+    # TODO: come up w. better value for eps
+    eps = 0.01 if psi.op == "=" else 0
 
     # TODO combine
     if psi.op in ("<", "<=", "="):
@@ -164,13 +159,14 @@ def _(psi, t, store):
                          phi=psi,
                          kind=K.PRED_LOWER)
 
-    if psi.op in (">", ">=", "="):
+    elif psi.op in (">", ">=", "="):
         store.add_constr(x - const <= M * z_t - eps,
                          phi=psi,
                          kind=K.PRED_UPPER)
         store.add_constr(const - x <= M * (1 - z_t) - eps,
                          phi=psi,
                          kind=K.PRED_LOWER)
+        
 
 
 @encode.register(stl.Or)
@@ -185,7 +181,7 @@ def _(psi, t, store):
 
 def encode_bool_op(psi, t, store, kind, or_flag):
     z_psi = store.z(psi, t)
-    elems = [store.z(psi.left, t), store.z(psi.right, t)]
+    elems = [store.z(psi2, t) for psi2 in psi.args]
     encode_op(z_psi, elems, store, kind, psi, or_flag=or_flag)
 
 

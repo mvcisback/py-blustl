@@ -56,6 +56,11 @@ def cegis(params):
         ws.add(w)
 
 
+def bootstrap():
+    # TODO: compute initial feasible u and w
+    pass
+
+
 # TODO: memomize
 def best_response(params, w):
     feasible, output = milp.encode_and_run(params, w=w)

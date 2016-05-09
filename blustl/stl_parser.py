@@ -107,9 +107,9 @@ class STLVisitor(NodeVisitor):
         return stl.G(i1, stl.F(i2, p))
 
     def binop_visiter(self, _, (phi1, _2, _3, _4, phi2), op):
-        argL = phi1.args if isinstance(phi1, op) else [phi1]
-        argR = phi2.args if isinstance(phi2, op) else [phi2]
-        return op(argL + argR)
+        argL = list(phi1.args) if isinstance(phi1, op) else [phi1]
+        argR = list(phi2.args) if isinstance(phi2, op) else [phi2]
+        return op(tuple(argL + argR))
 
     def visit_or(self, *args):
         return self.binop_visiter(*args, op=stl.Or)
