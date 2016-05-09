@@ -30,17 +30,26 @@ def controller_oracle(params):
         p2 = cegis(params2, u1)
         (J1, w1, u1, iis1) = next(p1)
         (J2, w2, u2, iis2) = next(p2)
-        while True:
+
+        env_repeated = sys_repeated = False        
+        while not (env_repeated and sys_repeated):
+            env_repeated = sys_repeated = False
             if J1 == -oo:
                 return False, w1, iis1 # iis
             elif J2 == -oo:
                 return True, w2, iis2 # iis, Solved
 
-            (J1, w1, u1, iis1) = p1.send(u2)
-            (J2, w2, u2, iis2) = p2.send(u1)
-
+            try:
+                (J1, w1, u1, iis1) = p1.send(u2)
+            except StopIteration:
+                env_repeated = True
+            try:
+                (J2, w2, u2, iis2) = p2.send(u1)
+            except StopIteration:
+                sys_repeated = True
+        return True, u2, u1, None
     else:
-        return False, u2, u1, iis0
+        return (J0 != -oo), u2, u1, iis0
 
 
 def cegis(params, w0):
@@ -51,6 +60,8 @@ def cegis(params, w0):
         
         J, w, u, iis = min(responses)
         w = yield J, w, u, iis
+        if w in ws:
+            break
 
         costs[u] = J
         ws.add(w)
