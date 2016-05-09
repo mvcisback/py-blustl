@@ -14,3 +14,27 @@ def test_feasibility(path, feasibility):
     feasible, _ = milp.encode_and_run(params)
     assert feasible == feasibility
 
+def test_encode_pred():
+    # TODO
+    pass
+
+def test_encode_or():
+    # TODO
+    pass
+
+def test_encode_and():
+    # TODO
+    pass
+
+def test_encode_f():
+    # TODO
+    pass
+
+def test_encode_g():
+    # TODO
+    pass
+
+
+def test_encode_neg():
+    # TODO
+    pass

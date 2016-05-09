@@ -17,7 +17,7 @@ rank = "[" const "]"
 
 phi = g / f / gf / fg / pred / or / and
 phi2 = pred / or2 / and2
-pred = id _ op _ const
+pred = id _ op _ const_or_unbound
 
 paren_phi = "(" __ phi __ ")"
 paren_phi2 = "(" __ phi2 __ ")"
@@ -34,8 +34,11 @@ gf = G interval F interval paren_phi2
 
 F = "F" / "⋄"
 G = "G" / "□"
-interval = "[" __ const __ "," __ const __ "]"
+interval = "[" __ const_or_unbound __ "," __ const_or_unbound __ "]"
 
+const_or_unbound = unbound / const
+
+unbound = "?"
 id = "x" ~r"\d+"
 const = ~r"[\+\-]?\d*(\.\d+)?"
 op = ">=" / "<=" / "<" / ">" / "="
@@ -83,10 +86,13 @@ class STLVisitor(NodeVisitor):
         return phi
 
     def visit_pred(self, _, (id, _1, op, _3, const)):
-        return stl.Pred(id, op, const)
+        return stl.Pred(id, op, const[0])
 
     def visit_interval(self, _, (_1, _2, left, _3, _4, _5, right, _6, _7)):
-        return stl.Interval(left, right)
+        return stl.Interval(left[0], right[0])
+
+    def visit_unbound(self, node, _):
+        return node.text
 
     def visit_f(self, _, (_1, interval, phi)):
         return stl.F(interval, phi)
@@ -157,9 +163,10 @@ def from_yaml(content):
     g['init'] = [parse_stl(x, rule="pred") for x in g['init']]
     g['state_space']['A'] = parse_matrix(g['state_space']['A'])
     g['state_space']['B'] = parse_matrix(g['state_space']['B'])
+    # TODO: is there a more principled way to do this?
+    g['explore_width'] = g.get('explore_width', 5)
 
     # TODO: check num vars
-
     n = g['num_vars']
     n_sys = g['num_sys_inputs']
     n_env = g['num_env_inputs']

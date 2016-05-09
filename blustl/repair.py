@@ -1,5 +1,5 @@
 from functools import partial
-from itertools import product
+from itertools import product, chain
 from collections import deque
 
 from funcy import mapcat
@@ -8,19 +8,19 @@ import stl
 from constraint_kinds import UNREPAIRABLE, Kind as K
 
 
-oo = float('inf')
-unbounded = stl.Interval(0, oo)
+unbounded = stl.Interval('?', '?')
+lower_bounded = lambda x: stl.Interval(x.interval.lower, '?')
 
 TEMPORAL_WEAKEN = {
-    "G": lambda x: stl.F(stl.G(x.arg, x.interval), unbounded),
-    "FG": lambda x: stl.G(stl.F(x.arg, x.interval), unbounded),
-    "GF": lambda x: stl.F(x.arg, x.interval),
+    "G": lambda x: stl.F(lower_bounded(x), stl.G(x.interval, x.arg)),
+    "FG": lambda x: stl.G(lower_bounded(x), stl.F(unbounded, x.arg.arg)),
+    "GF": lambda x: stl.F(lower_bounded(x), x.arg.arg),
 }
 
 TEMPORAL_STRENGTHEN = {
-    "F": lambda x: stl.G(stl.F(x.arg, x.interval), unbounded),
-    "GF": lambda x: stl.F(stl.G(x.arg, x.interval), unbounded),
-    "FG": lambda x: stl.G(x.arg, x.interval),
+    "F": lambda x: stl.G(unbounded, stl.F(x.interval, x.arg)),
+    "GF": lambda x: stl.F(x.interval, stl.G(unbounded, x.arg.arg)),
+    "FG": lambda x: stl.G(x.interval, x.arg.arg),
 }
 
 TYPE_STR = {stl.F: "F", stl.G: "G"}
@@ -42,29 +42,34 @@ def temporal_strengthen(phi):
     return TEMPORAL_STRENGTHEN.get(op_type(phi), lambda x: x)(phi)
 
 
-def _change_structure(phi, n, op):
-    return [op(phi, stl.G(
-        stl.Pred(i, ineq, oo), unbounded))
-            for ineq, i in product(
-                ("<=", ">="), range(0, n))]
+def _change_structure(phi, n, op, modal_op):
+    f = lambda (rel, i): op([phi, modal_op(unbounded, stl.Pred(i, rel, '?'))])
+    return map(f, product(("<=", ">="), range(0, n)))
 
 
 def weaken_structure(phi, n):
-    """phi -> phi or G(x ~ ?)"""
-    return _change_structure(phi, n, stl.Or)
+    """phi -> phi or F(x ~ ?)"""
+    return _change_structure(phi, n, stl.Or, modal_op=stl.F)
 
 
 def strengthen_structure(phi, n):
     """phi -> phi and G(x ~ ?)"""
-    return _change_structure(phi, n, stl.And)
+    return _change_structure(phi, n, stl.And, modal_op=stl.G)
 
 
 def tune_params(phi):
     raise NotImplementedError
 
 
-def all_repairs(psi):
+def check_consistent(phi, P, N):
     raise NotImplementedError
+
+
+def all_repairs(psi, n, strengthen=True):
+    temporal, structure = (temporal_strengthen, strengthen_structure) if strengthen \
+                          else (temporal_weaken, weaken_structure)
+    return chain([temporal(psi)], structure(psi, n))
+
 
 def candidates(iis):
     return mapcat(
