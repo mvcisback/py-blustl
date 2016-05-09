@@ -41,7 +41,7 @@ class Store(object):
         elems = [('x', n, self.x), ('u', n_sys, self.u), ('w', n_env, self.w)]
         for pre, num, d in elems:
             # TODO: support taking bounds from phi/params
-            ub, lb = (10, -10) if pre == 'x' else (1, 0)
+            ub, lb = (100, -100) if pre == 'x' else (1, 0)
             for i, t in product(range(num), range(self.steps + 1)):
                 name = "{}{}_{}".format(pre, i, t)
                 d[i][t] = self.model.addVar(vtype=gpy.GRB.CONTINUOUS,
