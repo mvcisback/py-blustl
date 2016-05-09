@@ -31,6 +31,7 @@ class Store(object):
         self.constr_lookup = defaultdict(dict)
         self._constr_counter = Counter()
         self.params = params
+        self._count = 0
 
         n = params['num_vars']
         n_sys = params['num_sys_inputs']
@@ -54,8 +55,9 @@ class Store(object):
 
         vtype = gpy.GRB.BINARY if isinstance(x,
                                              stl.Pred) else gpy.GRB.CONTINUOUS
-        prefix = "z" if isinstance(x, stl.Pred) else "Z"
-        i = len(self._z)
+        prefix = "z" if isinstance(x, stl.Pred) else "q"
+        i = self._count
+        self._count += 1
         name = "{}{}_{}".format(prefix, i, t)
         self._z[x][t] = self.model.addVar(vtype=vtype, name=name)
         self.model.update()
@@ -171,12 +173,12 @@ def _(psi, t, store):
 
 @encode.register(stl.Or)
 def _(psi, t, store):
-    encode_bool_op(psi, t, store, (K.OR, K.OR_TOTAL), False)
+    encode_bool_op(psi, t, store, (K.OR, K.OR_TOTAL), or_flag=True)
 
 
 @encode.register(stl.And)
 def _(psi, t, store):
-    encode_bool_op(psi, t, store, (K.AND, K.AND_TOTAL), True)
+    encode_bool_op(psi, t, store, (K.AND, K.AND_TOTAL), or_flag=False)
 
 
 def encode_bool_op(psi, t, store, kind, or_flag):
@@ -202,7 +204,7 @@ def encode_temp_op(psi, t, store, kind, or_flag=False):
     H = store.H
     a, b = f(min(t + a, H)), f(min(t + b, H))
     elems = [store.z(psi.arg, t + i) for i in range(a, b + 1)
-             if t + i < H]
+             if t + i <= H]
     encode_op(z_psi, elems, store, kind, psi, or_flag=or_flag)
 
 
