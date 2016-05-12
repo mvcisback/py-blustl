@@ -16,7 +16,6 @@ def p2_params(params):
     n_sys = params2['num_sys_inputs'] = params['num_env_inputs']
     B = params['state_space']['B']
     params2['state_space']['B'] = hstack([B[:, n_sys:], B[:, :n_sys]])
-    params2['sys'] = [stl.Neg(stl.And(tuple(params['sys'])))]
     return params2
 
 
@@ -27,7 +26,7 @@ def controller_oracle(params):
         params2 = p2_params(params)
         
         p1 = cegis(params1, u2)
-        p2 = cegis(params2, u1)
+        p2 = cegis(params2, u1, p1=False)
         (J1, w1, u1, iis1) = next(p1)
         (J2, w2, u2, iis2) = next(p2)
 
@@ -52,11 +51,11 @@ def controller_oracle(params):
         return (J0 != -oo), u2, u1, iis0
 
 
-def cegis(params, w0):
+def cegis(params, w0, p1=True):
     ws = {w0}
     costs = {}
     while True:
-        responses = [best_response(params, w=w) for w in ws]
+        responses = [best_response(params, w=w, p1) for w in ws]
         
         J, w, u, iis = min(responses)
         w = yield J, w, u, iis
@@ -68,8 +67,8 @@ def cegis(params, w0):
 
 
 # TODO: memomize
-def best_response(params, w=None):
-    feasible, output = milp.encode_and_run(params, w=w)
+def best_response(params, w=None, p1):
+    feasible, output = milp.encode_and_run(params, w=w, p1)
     if not feasible:
         iis = output
         return -oo, w, None, iis

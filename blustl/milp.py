@@ -107,10 +107,14 @@ def encode_state_evolution(store, params):
 
 
 @singledispatch
-def encode(params, x=None, u=None, w=None):
+def encode(params, x=None, u=None, w=None, p1=True):
     """STL -> MILP"""
 
-    phi = stl.And(tuple(params['sys'] + params.get('env', [])))
+    if p1:
+        phi = stl.Or(tuple(params['sys'] + stl.Neg(params.get('env', []))))
+    else:
+        phi = stl.And(tuple(stl.Neg(params['sys']) + params.get('env', [])))
+        
     store = Store(params, x=x, u=u, w=w)
 
     # encode STL constraints
