@@ -1,7 +1,4 @@
 funcy==1.7.1
 parsimonious==0.6.2
-pyast==1.0
 PyYAML==3.11
-singledispatch==3.4.0.3
-enum34==1.1.4
 numpy==1.11.0

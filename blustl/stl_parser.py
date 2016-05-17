@@ -4,7 +4,7 @@ from funcy import cat, flatten
 import yaml
 import numpy as np
 
-import stl
+import blustl.stl
 
 # TODO: Support parsing fixed inputs
 
@@ -65,13 +65,14 @@ class STLVisitor(NodeVisitor):
     def visit_env(self, _, phi):
         return phi
 
-    def visit_sys(self, _, (phi, maybe_rank)):
+    def visit_sys(self, _, children):
+        phi, maybe_rank = children
         maybe_rank = flatten(maybe_rank)
         rank = maybe_rank[0] if len(maybe_rank) > 0 else 0
         return phi
 
-    def visit_rank(self, _, (_1, const, _2)):
-        return const
+    def visit_rank(self, _, children):
+        return children[1]
 
     def visit_phi(self, _, children):
         return children[0]
@@ -79,46 +80,48 @@ class STLVisitor(NodeVisitor):
     def visit_phi2(self, _, children):
         return children[0]
 
-    def visit_paren_phi(self, _, (_1, _2, phi, _3, _4)):
-        return phi
+    def visit_paren_phi(self, _, children):
+        return children[2]
 
-    def visit_paren_phi2(self, _, (_1, _2, phi, _3, _4)):
-        return phi
+    def visit_paren_phi2(self, _, children):
+        return children[2]
 
-    def visit_pred(self, _, (id, _1, op, _3, const)):
+    def visit_pred(self, _, children):
+        id, _, op, _, const = children
         return stl.Pred(id, op, const[0])
 
-    def visit_interval(self, _, (_1, _2, left, _3, _4, _5, right, _6, _7)):
+    def visit_interval(self, _, children):
+        _, _, left, _, _, _, right, _, _ = children
         return stl.Interval(left[0], right[0])
 
     def visit_unbound(self, node, _):
         return node.text
 
-    def visit_f(self, _, (_1, interval, phi)):
+    def visit_f(self, _, children):
+        _, interval, phi = children
         return stl.F(interval, phi)
 
-    def visit_g(self, _, (_1, interval, phi)):
+    def visit_g(self, _, children):
+        _, interval, phi = children
         return stl.G(interval, phi)
 
-    def visit_fg(self, _, (_1, i1, _2, i2, p)):
+    def visit_fg(self, _, children):
+        _, i1, _, i2, p = children
         return stl.F(i1, stl.G(i2, p))
 
-    def visit_gf(self, _, (_1, i1, _2, i2, p)):
+    def visit_gf(self, _, children):
+        _1, i1, _2, i2, p = children
         return stl.G(i1, stl.F(i2, p))
 
-    def binop_visiter(self, _, (phi1, _2, _3, _4, phi2), op):
+    def binop_visiter(self, _, children, op):
+        phi1, _, _, _, phi2 = children
         argL = list(phi1.args) if isinstance(phi1, op) else [phi1]
         argR = list(phi2.args) if isinstance(phi2, op) else [phi2]
         return op(tuple(argL + argR))
 
-    def visit_or(self, *args):
-        return self.binop_visiter(*args, op=stl.Or)
-
+    visit_or = partialmethod(binop_visiter, op=stl.Or)
     visit_or2 = visit_or
-
-    def visit_and(self, *args):
-        return self.binop_visiter(*args, op=stl.And)
-
+    visit_and = partialmethod(binop_visiter, op=stl.And)
     visit_and2 = visit_and
 
     def visit_op(self, op, _):
@@ -135,10 +138,12 @@ class MatrixVisitor(NodeVisitor):
     def generic_visit(self, _, children):
         return children
 
-    def visit_matrix(self, _, (_1, _2, rows, _3, _4)):
+    def visit_matrix(self, _, children):
+        _, _, rows, _, _ = children
         return rows
 
-    def visit_row(self, _, (consts, _1, _2)):
+    def visit_row(self, _, children):
+        consts, _, _ = children
         return consts
 
     def visit_const(self, node, _):

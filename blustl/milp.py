@@ -3,6 +3,7 @@
 # TODO: Compute eps and M based on x and A, B, dt
 # TODO: encode STL robustness metric
 # TODO: make inital conditions part of phi
+# TODO: convert to PuLP: http://pythonhosted.org/PuLP/CaseStudies/a_blending_problem.html
 
 from __future__ import division
 
@@ -10,14 +11,11 @@ from math import ceil
 from itertools import product, chain, starmap
 import operator
 from collections import defaultdict, Counter
-from functools import partial
-
-from singledispatch import singledispatch
+from functools import partial, singledispatch
 from funcy import mapcat, pluck, group_by, drop, walk_values, compose
-import gurobipy as gpy
 
-import stl
-from constraint_kinds import Kind as K
+from blustl import stl
+from blustl.constraint_kinds import Kind as K
 
 DEFAULT_NAME = 'controller_synth'
 
@@ -203,7 +201,8 @@ def encode_temp_op(psi, t, store, kind, or_flag=False):
     encode_op(z_psi, elems, store, kind, psi, or_flag=or_flag)
 
 
-def encode_op(z_psi, elems, store, (k1, k2), phi, or_flag=False):
+def encode_op(z_psi, elems, store, kind, phi, or_flag=False):
+    k1, k2 = kind
     z_phi_total = sum(elems)
 
     if or_flag:
