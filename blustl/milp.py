@@ -215,7 +215,7 @@ def _(psi, t, store):
 
 Result = namedtuple("Result", ["feasible", "model", "cost", "solution"])
 
-def encode_and_run(params, x=None, u=None, w=None):
+def encode_and_run(params, *, x=None, u=None, w=None):
     model, store = encode(params, x=x, u=u, w=w)
     status = lp.LpStatus[model.solve(lp.solvers.COIN())]
     
