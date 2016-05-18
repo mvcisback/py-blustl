@@ -4,13 +4,16 @@
 # TODO: encode STL robustness metric
 # TODO: make inital conditions part of phi
 # TODO: convert to PuLP: http://pythonhosted.org/PuLP/CaseStudies/a_blending_problem.html
+# TODO: implement IIS via slacks
+# TODO: weight IIS slacks based priority
+
 
 from __future__ import division
 
 from math import ceil
 from itertools import product, chain, starmap
 import operator
-from collections import defaultdict, Counter
+from collections import defaultdict, Counter, namedtuple
 from functools import partial, singledispatch
 
 import pulp as lp
@@ -210,14 +213,14 @@ def _(psi, t, store):
     store.add_constr(z_psi == 1 - z_phi, psi, kind=K.NEG)
 
 
+Result = namedtuple("Result", ["feasible", "model", "cost", "solution"])
+
 def encode_and_run(params, x=None, u=None, w=None):
     model, store = encode(params, x=x, u=u, w=w)
     status = lp.LpStatus[model.solve(lp.solvers.COIN())]
     
     if status in ('Infeasible', 'Unbounded'):
-        # TODO: implement slack version
-        # TODO: weight slacks based priority
-        raise NotImplementedError
+        return Result(False, model, None, None)
 
     elif status == "Optimal":
         f = lambda x: x[0][0]
@@ -226,6 +229,6 @@ def encode_and_run(params, x=None, u=None, w=None):
         solution = group_by(f, [(x.name, x.value()) for x in model.variables()])
         solution = walk_values(f3, solution)
         cost = model.objective.value()
-        return (True, (cost, solution))
+        return Result(True, model, cost, solution)
     else:
         raise NotImplementedError
