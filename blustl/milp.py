@@ -12,17 +12,19 @@ from itertools import product, chain, starmap
 import operator
 from collections import defaultdict, Counter
 from functools import partial, singledispatch
+
+import pulp as lp
 from funcy import mapcat, pluck, group_by, drop, walk_values, compose
 
 from blustl import stl
 from blustl.constraint_kinds import Kind as K
+from blustl.constraint_kinds import Category as C
 
 DEFAULT_NAME = 'controller_synth'
 
 
 class Store(object):
     def __init__(self, params, x=None, u=None, w=None):
-        self.model = gpy.Model(name=params.get('name', DEFAULT_NAME))
         self._z = defaultdict(dict)
         self.u = defaultdict(dict)
         self.w = defaultdict(dict)
@@ -31,6 +33,7 @@ class Store(object):
         self._constr_counter = Counter()
         self.params = params
         self._count = 0
+        self.model = lp.LpProblem("TODO", lp.LpMaximize)
 
         n = params['num_vars']
         n_sys = params['num_sys_inputs']
@@ -49,23 +52,20 @@ class Store(object):
                     d[i][t] = d2[i, t]
                 else:
                     name = "{}{}_{}".format(pre, i, t)
-                    d[i][t] = self.model.addVar(vtype=gpy.GRB.CONTINUOUS,
-                                                name=name, lb=lb, ub=ub)
+                    d[i][t] = lp.LpVariable(cat=C.Real.value, name=name, 
+                                            lowBound=lb,  upBound=ub)
 
-        self.model.update()
 
     def z(self, x, t):
         if x in self._z and t in self._z[x]:
             return self._z[x][t]
 
-        vtype = gpy.GRB.BINARY if isinstance(x,
-                                             stl.Pred) else gpy.GRB.CONTINUOUS
+        cat = C.Bool if isinstance(x, stl.Pred) else C.Real
         prefix = "z" if isinstance(x, stl.Pred) else "q"
         i = self._count
         self._count += 1
         name = "{}{}_{}".format(prefix, i, t)
-        self._z[x][t] = self.model.addVar(vtype=vtype, name=name)
-        self.model.update()
+        self._z[x][t] = lp.LpVariable(cat=cat.value, name=name)
         encode(x, t, self)
         return self._z[x][t]
 
@@ -82,14 +82,13 @@ class Store(object):
         return int(ceil(self.H / self.dt))
 
     def add_constr(self, constr, phi=None, kind=None):
-        if not isinstance(constr, gpy.TempConstr):
+        if not isinstance(constr, lp.LpConstraint):
             return  # only add if symbolic
 
         self._constr_counter.update([kind])
         name = "{}{}".format(kind.name, self._constr_counter[kind])
-        r = self.model.addConstr(constr, name=name)
-        self.model.update()
-        self.constr_lookup[r.ConstrName] = (phi, kind)
+        self.model.addConstraint(constr, name=name)
+        self.constr_lookup[name] = (phi, kind)
 
 
 def encode_state_evolution(store, params):
@@ -105,14 +104,14 @@ def encode_state_evolution(store, params):
 
 
 @singledispatch
-def encode(params, x=None, u=None, w=None, p1=True):
+def encode(params:dict, x=None, u=None, w=None, p1=True):
     """STL -> MILP"""
 
-    if p1:
-        phi = stl.Or(tuple(params['sys'] + stl.Neg(params.get('env', []))))
-    else:
-        phi = stl.And(tuple(stl.Neg(params['sys']) + params.get('env', [])))
-        
+    sys, env = stl.And(params['sys']), stl.And(params['env'])
+    phi = stl.Or((sys, stl.Neg(env)))
+    if not p1:
+        phi = stl.Neg(phi)
+
     store = Store(params, x=x, u=u, w=w)
 
     # encode STL constraints
@@ -129,9 +128,7 @@ def encode(params, x=None, u=None, w=None, p1=True):
 
     # Create Objective
     # TODO: support alternative objective functions
-    store.model.setObjective(0, gpy.GRB.MAXIMIZE)
 
-    store.model.update()
     return store.model, store
 
 
@@ -146,23 +143,12 @@ def _(psi, t, store):
     # TODO: come up w. better value for eps
     eps = 0.01 if psi.op == "=" else 0
 
-    # TODO combine
+    mu = x - const
     if psi.op in ("<", "<=", "="):
-        store.add_constr(const - x <= M * z_t - eps,
-                         phi=psi,
-                         kind=K.PRED_UPPER)
-        store.add_constr(x - const <= M * (1 - z_t) - eps,
-                         phi=psi,
-                         kind=K.PRED_LOWER)
+        mu = -mu
 
-    elif psi.op in (">", ">=", "="):
-        store.add_constr(x - const <= M * z_t - eps,
-                         phi=psi,
-                         kind=K.PRED_UPPER)
-        store.add_constr(const - x <= M * (1 - z_t) - eps,
-                         phi=psi,
-                         kind=K.PRED_LOWER)
-        
+    store.add_constr(mu <= M * z_t - eps, phi=psi, kind=K.PRED_UPPER)
+    store.add_constr(-mu <= M * (1 - z_t) - eps, phi=psi, kind=K.PRED_LOWER)
 
 
 @encode.register(stl.Or)

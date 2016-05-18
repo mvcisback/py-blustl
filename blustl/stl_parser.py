@@ -1,10 +1,12 @@
 # -*- coding: utf-8 -*-
+from functools import partialmethod
+
 from parsimonious import Grammar, NodeVisitor
 from funcy import cat, flatten
 import yaml
 import numpy as np
 
-import blustl.stl
+from blustl import stl 
 
 # TODO: Support parsing fixed inputs
 
@@ -67,7 +69,7 @@ class STLVisitor(NodeVisitor):
 
     def visit_sys(self, _, children):
         phi, maybe_rank = children
-        maybe_rank = flatten(maybe_rank)
+        maybe_rank = tuple(flatten(maybe_rank))
         rank = maybe_rank[0] if len(maybe_rank) > 0 else 0
         return phi
 
@@ -150,7 +152,7 @@ class MatrixVisitor(NodeVisitor):
         return float(node.text)
 
     def visit_consts(self, _, children):
-        return flatten(children)
+        return list(flatten(children))
 
 
 def parse_stl(stl_str, rule="phi"):
@@ -163,8 +165,8 @@ def parse_matrix(mat_str):
 
 def from_yaml(content):
     g = yaml.load(content)
-    g['sys'] = [parse_stl(x, rule="sys") for x in g.get('sys', [])]
-    g['env'] = [parse_stl(x, rule="env") for x in g.get('env', [])]
+    g['sys'] = tuple(parse_stl(x, rule="sys") for x in g.get('sys', []))
+    g['env'] = tuple(parse_stl(x, rule="env") for x in g.get('env', []))
     g['init'] = [parse_stl(x, rule="pred") for x in g['init']]
     g['state_space']['A'] = parse_matrix(g['state_space']['A'])
     g['state_space']['B'] = parse_matrix(g['state_space']['B'])
