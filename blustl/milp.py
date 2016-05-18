@@ -128,6 +128,7 @@ def encode(params:dict, x=None, u=None, w=None, p1=True):
 
     # Create Objective
     # TODO: support alternative objective functions
+    store.model.setObjective(store.z(phi, 0))
 
     return store.model, store
 
@@ -211,27 +212,20 @@ def _(psi, t, store):
 
 def encode_and_run(params, x=None, u=None, w=None):
     model, store = encode(params, x=x, u=u, w=w)
-    model.optimize()
+    status = lp.LpStatus[model.solve(lp.solvers.COIN())]
+    
+    if status in ('Infeasible', 'Unbounded'):
+        # TODO: implement slack version
+        # TODO: weight slacks based priority
+        raise NotImplementedError
 
-    if model.status == gpy.GRB.Status.INF_OR_UNBD:
-        # Turn presolve off to determine whether model is infeasible
-        # or unbounded
-        model.setParam(gpy.GRB.Param.Presolve, 0)
-        model.optimize()
-
-    if model.status == gpy.GRB.Status.INFEASIBLE:
-        model.computeIIS()
-        IIS = [store.constr_lookup[x.ConstrName]
-               for x in model.getConstrs() if x.IISConstr]
-        return (False, IIS)
-
-    elif model.status == gpy.GRB.Status.OPTIMAL:
+    elif status == "Optimal":
         f = lambda x: x[0][0]
         f2 = lambda x: (tuple(map(int, x[0][1:].split('_'))), x[1])
         f3 = compose(tuple, sorted, partial(map, f2))
-        solution = group_by(f, [(x.VarName, x.X) for x in model.getVars()])
+        solution = group_by(f, [(x.name, x.value()) for x in model.variables()])
         solution = walk_values(f3, solution)
-        cost = 0 # TODO
+        cost = model.objective.value()
         return (True, (cost, solution))
     else:
         raise NotImplementedError
