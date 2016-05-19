@@ -28,3 +28,4 @@ class TestSTLParser(unittest.TestCase):
     def test_from_yaml_smoketest(self, yml_path):
         with open(yml_path) as f:
             from_yaml(f)
+

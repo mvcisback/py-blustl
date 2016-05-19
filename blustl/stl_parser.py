@@ -1,16 +1,22 @@
 # -*- coding: utf-8 -*-
+
+# TODO: Support parsing fixed inputs
+# TODO: break out into seperate library
+# TODO: allow parsing multiple ors & ands together
+
 from functools import partialmethod
+from collections import namedtuple
+import operator as op
+from math import ceil
 
 from parsimonious import Grammar, NodeVisitor
-from funcy import cat, flatten
+from funcy import cat, flatten, pluck_attr
 import yaml
 import numpy as np
 
-from blustl import stl 
+from blustl import stl
+from blustl.game import Phi, SS, Dynamics, Game
 
-# TODO: Support parsing fixed inputs
-
-# TODO: allow parsing multiple ors & ands together
 STL_GRAMMAR = Grammar(u'''
 env = phi
 sys = phi (_ rank)?
@@ -155,32 +161,32 @@ class MatrixVisitor(NodeVisitor):
         return list(flatten(children))
 
 
-def parse_stl(stl_str, rule="phi"):
+def parse_stl(stl_str, rule="phi") -> "STL":
     return STLVisitor().visit(STL_GRAMMAR[rule].parse(stl_str))
 
 
-def parse_matrix(mat_str):
+def parse_matrix(mat_str) -> np.array:
     return np.array(MatrixVisitor().visit(MATRIX_GRAMMAR.parse(mat_str)))
 
 
-def from_yaml(content):
+def from_yaml(content) -> Game:
     g = yaml.load(content)
-    g['sys'] = tuple(parse_stl(x, rule="sys") for x in g.get('sys', []))
-    g['env'] = tuple(parse_stl(x, rule="env") for x in g.get('env', []))
-    g['init'] = [parse_stl(x, rule="pred") for x in g['init']]
-    g['state_space']['A'] = parse_matrix(g['state_space']['A'])
-    g['state_space']['B'] = parse_matrix(g['state_space']['B'])
-    # TODO: is there a more principled way to do this?
-    g['explore_width'] = g.get('explore_width', 5)
 
-    # TODO: check num vars
-    n = g['num_vars']
-    n_sys = g['num_sys_inputs']
-    n_env = g['num_env_inputs']
-    assert g['state_space']['A'].shape == (n, n)
-    assert g['state_space']['B'].shape == (n, n_sys + n_env)
+    sys = tuple(parse_stl(x, rule="sys") for x in g.get('sys', []))
+    env = tuple(parse_stl(x, rule="env") for x in g.get('env', []))
+    init = [parse_stl(x, rule="pred") for x in g['init']]
+    phi = Phi(sys, env, init)
+    ss = SS(*map(parse_matrix, op.itemgetter('A', 'B')(g['state_space'])))
+    width = g.get('explore_width', 5)
+    dyn = Dynamics(ss, g['num_vars'], g['num_sys_inputs'], g['num_env_inputs'])
+    dt = int(g['dt'])
+    steps = int(ceil(int(g['time_horizon']) / dt))
 
-    return g
+    assert len(set(pluck_attr('lit', phi.init))) <= dyn.n_vars
+    assert ss.A.shape == (dyn.n_vars, dyn.n_vars)
+    assert ss.B.shape == (dyn.n_vars, dyn.n_sys + dyn.n_env)
+
+    return Game(phi, dyn, width, dt, steps)
 
 if __name__ == '__main__':
     main()

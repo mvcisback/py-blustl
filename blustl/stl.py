@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from collections import namedtuple
+from typing import Union
 
 class Pred(namedtuple('P', ['lit', 'op', 'const'])):
     def __repr__(self):
@@ -20,8 +21,11 @@ class Interval(namedtuple('I', ['lower', 'upper'])):
 class NaryOpSTL(namedtuple('NaryOp', ['args'])):
     OP = "?"
     def __repr__(self):
-        rep = "({})" + " {op} ({})"*(len(self.args) - 1)
-        return rep.format(*self.args, op=self.OP)
+        if self.args:
+            rep = "({})" + " {op} ({})"*(len(self.args) - 1)
+            return rep.format(*self.args, op=self.OP)
+        else:
+            return ""
 
     def children(self):
         return self.args
@@ -63,3 +67,5 @@ def walk(stl):
         node = children.pop()
         yield node
         children.extend(node.children())
+
+STL = Union[Pred, NaryOpSTL, ModalOp, Neg]

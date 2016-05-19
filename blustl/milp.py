@@ -1,18 +1,19 @@
 # TODO: factor out encode recursive structure into a generator
 # TODO: add tests where variables are preapplied to constraints
+# TODO: add tests for feasible and infeasible constraints
 # TODO: Compute eps and M based on x and A, B, dt
 # TODO: encode STL robustness metric
 # TODO: make inital conditions part of phi
-# TODO: convert to PuLP: http://pythonhosted.org/PuLP/CaseStudies/a_blending_problem.html
 # TODO: implement IIS via slacks
 # TODO: weight IIS slacks based priority
+# TODO: move model out of store
 
 
 from __future__ import division
 
-from math import ceil
 from itertools import product, chain, starmap
-import operator
+import operator as op
+from math import ceil
 from collections import defaultdict, Counter, namedtuple
 from functools import partial, singledispatch
 
@@ -20,37 +21,37 @@ import pulp as lp
 from funcy import mapcat, pluck, group_by, drop, walk_values, compose
 
 from blustl import stl
-from blustl.constraint_kinds import Kind as K
+from blustl.game import Game, Phi
+from blustl.constraint_kinds import Kind as K, Kind
 from blustl.constraint_kinds import Category as C
 
 DEFAULT_NAME = 'controller_synth'
 
 
 class Store(object):
-    def __init__(self, params, x=None, u=None, w=None):
+    def __init__(self, g:Game, x=None, u=None, w=None):
         self._z = defaultdict(dict)
         self.u = defaultdict(dict)
         self.w = defaultdict(dict)
         self.x = defaultdict(dict)
+        self._g = g
         self.constr_lookup = defaultdict(dict)
         self._constr_counter = Counter()
-        self.params = params
         self._count = 0
         self.model = lp.LpProblem("TODO", lp.LpMaximize)
 
-        n = params['num_vars']
-        n_sys = params['num_sys_inputs']
-        n_env = params['num_env_inputs']
-
         # Add state, input, and env vars
-        elems = [('x', n, self.x, x), ('u', n_sys, self.u, u), 
-                 ('w', n_env, self.w, w)]
+        elems = [
+            ('x', g.dyn.n_vars, self.x, x), 
+            ('u', g.dyn.n_sys, self.u, u), 
+            ('w', g.dyn.n_env, self.w, w)
+        ]
 
         for pre, num, d, fixed in elems:
             # TODO: support taking bounds from phi/params
             d2 = dict(fixed) if fixed else {}
             ub, lb = (100, -100) if pre == 'x' else (1, 0)
-            for i, t in product(range(num), range(self.steps + 1)):
+            for i, t in product(range(num), range(g.N + 1)):
                 if (i, t) in d2:
                     d[i][t] = d2[i, t]
                 else:
@@ -59,7 +60,7 @@ class Store(object):
                                             lowBound=lb,  upBound=ub)
 
 
-    def z(self, x, t):
+    def z(self, x:"STL", t:int):
         if x in self._z and t in self._z[x]:
             return self._z[x][t]
 
@@ -69,22 +70,10 @@ class Store(object):
         self._count += 1
         name = "{}{}_{}".format(prefix, i, t)
         self._z[x][t] = lp.LpVariable(cat=cat.value, name=name)
-        encode(x, t, self)
+        encode(x, t, self, self._g)
         return self._z[x][t]
 
-    @property
-    def H(self):
-        return ceil(self.params['time_horizon'])
-
-    @property
-    def dt(self):
-        return self.params['dt']
-
-    @property
-    def steps(self):
-        return int(ceil(self.H / self.dt))
-
-    def add_constr(self, constr, phi=None, kind=None):
+    def add_constr(self, constr, phi:"STL"=None, kind:K=None):
         if not isinstance(constr, lp.LpConstraint):
             return  # only add if symbolic
 
@@ -94,37 +83,36 @@ class Store(object):
         self.constr_lookup[name] = (phi, kind)
 
 
-def encode_state_evolution(store, params):
-    inputs = lambda t: chain(pluck(t, store.u.values()), pluck(t, store.w.values()))
-    state = lambda t: pluck(t, store.x.values())
-    dot = lambda x, y: sum(starmap(operator.mul, zip(x, y)))
-    A, B = params['state_space']['A'], params['state_space']['B']
-    for t in range(store.steps):
+def encode_state_evolution(s:Store, g:Game):
+    inputs = lambda t: chain(pluck(t, s.u.values()), pluck(t, s.w.values()))
+    state = lambda t: pluck(t, s.x.values())
+    dot = lambda x, y: sum(starmap(op.mul, zip(x, y)))
+    A, B = g.dyn.ss
+    for t in range(g.N):
         for i, (A_i, B_i) in enumerate(zip(A, B)):
-            dx = store.dt*(dot(A_i, state(t)) + dot(B_i, inputs(t)))
-            constr = store.x[i][t + 1] == store.x[i][t] + dx
-            store.add_constr(constr, kind=K.DYNAMICS)
+            dx = g.dt*(dot(A_i, state(t)) + dot(B_i, inputs(t)))
+            constr = s.x[i][t + 1] == s.x[i][t] + dx
+            s.add_constr(constr, kind=K.DYNAMICS)
 
 
 @singledispatch
-def encode(params:dict, x=None, u=None, w=None, p1=True):
+def encode(g:Game, x=None, u=None, w=None, p1=True):
     """STL -> MILP"""
 
-    sys, env = stl.And(params['sys']), stl.And(params['env'])
-    phi = stl.Or((sys, stl.Neg(env)))
+    sys, env = stl.And(g.phi.sys), stl.And(g.phi.env)
+    phi = stl.Or((sys, stl.Neg(env))) if g.phi.env else sys
     if not p1:
         phi = stl.Neg(phi)
 
-    store = Store(params, x=x, u=u, w=w)
+    store = Store(g, x=x, u=u, w=w)
 
     # encode STL constraints
-    encode(phi, 0, store)
-    encode_state_evolution(store, params)
+    encode(phi, 0, store, g)
+    encode_state_evolution(store, g)
 
-    for psi in params['init']:
+    for psi in g.phi.init:
         x = store.x[psi.lit][0]
-        const = psi.const
-        store.add_constr(x == const, kind=K.INIT)
+        store.add_constr(x == psi.const, kind=K.INIT)
 
     # Assert top level true
     store.add_constr(store.z(phi, 0) == 1, kind=K.ASSERT_FEASIBLE)
@@ -133,90 +121,59 @@ def encode(params:dict, x=None, u=None, w=None, p1=True):
     # TODO: support alternative objective functions
     store.model.setObjective(store.z(phi, 0))
 
-    return store.model, store
+    return store.model, store.constr_lookup
 
 
 @encode.register(stl.Pred)
-def _(psi, t, store):
-    const = psi.const
-
-    x = store.x[psi.lit][t]
-    z_t = store.z(psi, t)
+def _(psi, t:int, s:Store, _):
+    x = s.x[psi.lit][t]
+    z_t = s.z(psi, t)
 
     M = 1000  # TODO
     # TODO: come up w. better value for eps
     eps = 0.01 if psi.op == "=" else 0
 
-    mu = x - const
-    if psi.op in ("<", "<=", "="):
-        mu = -mu
-
-    store.add_constr(mu <= M * z_t - eps, phi=psi, kind=K.PRED_UPPER)
-    store.add_constr(-mu <= M * (1 - z_t) - eps, phi=psi, kind=K.PRED_LOWER)
-
-
-@encode.register(stl.Or)
-def _(psi, t, store):
-    encode_bool_op(psi, t, store, (K.OR, K.OR_TOTAL), or_flag=True)
-
-
-@encode.register(stl.And)
-def _(psi, t, store):
-    encode_bool_op(psi, t, store, (K.AND, K.AND_TOTAL), or_flag=False)
-
-
-def encode_bool_op(psi, t, store, kind, or_flag):
-    z_psi = store.z(psi, t)
-    elems = [store.z(psi2, t) for psi2 in psi.args]
-    encode_op(z_psi, elems, store, kind, psi, or_flag=or_flag)
-
-
-@encode.register(stl.F)
-def _(psi, t, store):
-    encode_temp_op(psi, t, store, (K.F, K.F_TOTAL), or_flag=True)
-
-
-@encode.register(stl.G)
-def _(psi, t, store):
-    encode_temp_op(psi, t, store, (K.G, K.G_TOTAL), or_flag=False)
-
-
-def encode_temp_op(psi, t, store, kind, or_flag=False):
-    z_psi = store.z(psi, t)
-    f = lambda x: int(ceil(x / store.dt))
-    a, b = f(psi.interval.lower), f(psi.interval.upper)
-    elems = [store.z(psi.arg, t + i) for i in range(a, b + 1)
-             if t + i <= store.steps]
-
-    encode_op(z_psi, elems, store, kind, psi, or_flag=or_flag)
-
-
-def encode_op(z_psi, elems, store, kind, phi, or_flag=False):
-    k1, k2 = kind
-    z_phi_total = sum(elems)
-
-    if or_flag:
-        rel = operator.ge
-        lhs = z_phi_total
-    else:  # AND
-        rel = operator.le
-        lhs = 1 - len(elems) + z_phi_total
-
-    for e in elems:
-        store.add_constr(rel(z_psi, e), phi, kind=k1)
-    store.add_constr(rel(lhs, z_psi), phi, kind=k2)
+    mu = x - psi.const if psi.op in ("<", "<=", "=") else psi.const -x
+    s.add_constr(mu <= M * z_t - eps, phi=psi, kind=K.PRED_UPPER)
+    s.add_constr(-mu <= M * (1 - z_t) - eps, phi=psi, kind=K.PRED_LOWER)
 
 
 @encode.register(stl.Neg)
-def _(psi, t, store):
-    z_psi, z_phi = store.z(psi, t), store.z(psi.arg, t)
-    store.add_constr(z_psi == 1 - z_phi, psi, kind=K.NEG)
+def _(phi, t:int, s:Store, _):
+    s.add_constr(s.z(phi, t) == 1 - s.z(phi.arg, t), phi, kind=K.NEG)
+
+
+def encode_bool_op(psi, t:int, s:Store, g:Game, *, k:Kind, isor:bool):
+    elems = [s.z(psi2, t) for psi2 in psi.args]
+    encode_op(s.z(psi, t), elems, s, psi, k=k, isor=isor)
+
+
+def encode_temp_op(psi, t:int, s:Store, g:Game, *, k:Kind, isor:bool):
+    f = lambda x: int(ceil(x / g.dt))
+    a, b = map(f, psi.interval)
+    elems = [s.z(psi.arg, t + i) for i in range(a, b + 1) if t + i <= g.N]
+
+    encode_op(s.z(psi, t), elems, s, psi, k=k, isor=isor)
+
+
+def encode_op(z_psi, elems, s:Store, phi, *, k:Kind, isor:bool):
+    rel, const = (op.ge, 0) if isor else (op.le, 1 - len(elems))
+
+    for e in elems:
+        s.add_constr(rel(z_psi, e), phi, kind=k[0])
+    s.add_constr(rel(const + sum(elems), z_psi), phi, kind=k[1])
+
+
+encode.register(stl.Or)(partial(encode_bool_op, k=(K.OR, K.OR_TOTAL), isor=True))
+encode.register(stl.And)(partial(encode_bool_op, k=(K.AND, K.AND_TOTAL), isor=False))
+encode.register(stl.F)(partial(encode_temp_op, k=(K.F, K.F_TOTAL), isor=True))
+encode.register(stl.G)(partial(encode_temp_op, k=(K.G, K.G_TOTAL), isor=False))
 
 
 Result = namedtuple("Result", ["feasible", "model", "cost", "solution"])
 
 def encode_and_run(params, *, x=None, u=None, w=None):
-    model, store = encode(params, x=x, u=u, w=w)
+    model, constr_map = encode(params, x=x, u=u, w=w)
     status = lp.LpStatus[model.solve(lp.solvers.COIN())]
     
     if status in ('Infeasible', 'Unbounded'):
