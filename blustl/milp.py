@@ -6,6 +6,7 @@
 # TODO: implement IIS via slacks
 # TODO: weight IIS slacks based priority
 # TODO: move model out of store
+# TODO: make store simply a namedtuple
 
 
 from __future__ import division
@@ -25,6 +26,8 @@ from blustl.constraint_kinds import Kind as K, Kind
 from blustl.constraint_kinds import Category as C
 
 DEFAULT_NAME = 'controller_synth'
+
+Result = namedtuple("Result", ["feasible", "model", "cost", "solution"])
 
 
 class Store(object):
@@ -178,8 +181,6 @@ encode.register(stl.And)(partial(encode_bool_op, k=(K.AND, K.AND_TOTAL), isor=Fa
 encode.register(stl.F)(partial(encode_temp_op, k=(K.F, K.F_TOTAL), isor=True))
 encode.register(stl.G)(partial(encode_temp_op, k=(K.G, K.G_TOTAL), isor=False))
 
-
-Result = namedtuple("Result", ["feasible", "model", "cost", "solution"])
 
 def encode_and_run(params, *, x=None, u=None, w=None):
     model, constr_map = encode(params, x=x, u=u, w=w)
