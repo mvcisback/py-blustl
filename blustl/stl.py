@@ -68,4 +68,7 @@ def walk(stl):
         yield node
         children.extend(node.children())
 
+def tree(stl):
+    return {x:set(x.children()) for x in walk(stl) if x.children()}
+
 STL = Union[Pred, NaryOpSTL, ModalOp, Neg]
