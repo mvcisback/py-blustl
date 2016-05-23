@@ -147,8 +147,8 @@ def _(psi, t:int, s:Store, _):
     eps = 0.01 if psi.op == "=" else 0
 
     mu = x - psi.const if psi.op in ("<", "<=", "=") else psi.const -x
-    yield mu <= M * z_t - eps, K.PRED_UPPER
-    yield -mu <= M * (1 - z_t) - eps, K.PRED_LOWER
+    yield -mu <= M * z_t - eps, K.PRED_UPPER
+    yield mu <= M * (1 - z_t) - eps, K.PRED_LOWER
 
 
 @encode.register(stl.Neg)
@@ -167,11 +167,7 @@ def step(t:float, dt:float):
 
 def encode_temp_op(psi, t:int, s:Store, g:Game, *, k:Kind, isor:bool):
     a, b = map(partial(step, dt=g.dt), psi.interval)
-    try:
-        elems = [s.z[psi.arg, t + i] for i in range(a, b + 1) if t + i <= g.N]
-    except:
-        import ipdb; ipdb.set_trace()
-
+    elems = [s.z[psi.arg, t + i] for i in range(a, b + 1) if t + i <= g.N]
 
     yield from encode_op(s.z[psi, t], elems, s, psi, k=k, isor=isor)
 
