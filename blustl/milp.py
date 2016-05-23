@@ -206,11 +206,12 @@ def encode_and_run(params, *, x=None, u=None, w=None):
 
 
 def active_times(phi, *, dt, N, t_0=0, t_f=0):
-    yield phi, range(t_0, t_f + 1)
-
+    f = lambda x: min(step(x, dt=dt), N)
+    yield phi, range(f(t_0), f(t_f) + 1)
     if not isinstance(phi, stl.Pred):
         lo, hi = phi.interval if isinstance(phi, stl.ModalOp) else (0, 0)
-        f = lambda x: min(step(x, dt=dt), N)
-        lo2, hi2 = map(f, (t_0 + lo, t_f + hi))
+        t_0 += lo
+        t_f += hi
+        lo2, hi2 = map(f, (t_0, t_f))
         for child in phi.children():
-            yield from active_times(child, dt=dt, N=N, t_0=lo2, t_f=hi2) 
+            yield from active_times(child, dt=dt, N=N, t_0=t_0, t_f=t_f) 

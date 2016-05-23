@@ -3,7 +3,10 @@
 from nose2.tools import params
 import unittest
 
+from funcy import pluck
+
 from blustl import milp, stl_parser
+from blustl.stl_parser import parse_stl
 
 
 @params(
@@ -39,10 +42,14 @@ def test_encode_neg():
     pass
 
 
-@params([
-    '⋄[0,1](x1 > 2)',
-    '□[2,3]⋄[0,1](x1 > 2)',
-    '(□[2,3]⋄[0,1](x1 > 2)) ∧ (⋄[0,1](x1 > 2))'
-])
-def test_active_times(x):
-    pass
+@params(
+    ('⋄[0,1](x1 > 2)', (range(0, 1), range(0, 3))),
+    ('□[2,3]⋄[0,1](x1 > 2)', (range(0, 1), range(4, 7), range(4, 9))),
+    ('(□[2,3]⋄[0,1](x1 > 2)) ∧ (⋄[0,1](x1 > 2))', 
+     (range(1), range(1), range(4, 7), range(4, 9), range(1), range(3))),
+)
+def test_active_times(x, rngs):
+    x = parse_stl(x)
+    _rngs = tuple(pluck(1, milp.active_times(x, dt=0.5, N=10)))
+    assert rngs == _rngs
+
