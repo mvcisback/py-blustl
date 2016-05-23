@@ -4,8 +4,8 @@ from collections import deque
 
 from funcy import mapcat
 
-import stl
-from constraint_kinds import UNREPAIRABLE, Kind as K
+from blustl import stl
+from blustl.constraint_kinds import UNREPAIRABLE, Kind as K
 
 
 unbounded = stl.Interval('?', '?')
@@ -43,7 +43,7 @@ def temporal_strengthen(phi):
 
 
 def _change_structure(phi, n, op, modal_op):
-    f = lambda (rel, i): op([phi, modal_op(unbounded, stl.Pred(i, rel, '?'))])
+    f = lambda x: op([phi, modal_op(unbounded, stl.Pred([1], x[0], '?'))])
     return map(f, product(("<=", ">="), range(0, n)))
 
 

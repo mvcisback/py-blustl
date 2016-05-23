@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 from nose2.tools import params
 import unittest
 
@@ -12,8 +14,8 @@ from blustl import milp, stl_parser
 def test_feasibility(path, feasibility):
     with open(path) as f:
         params = stl_parser.from_yaml(f)
-    feasible, _ = milp.encode_and_run(params)
-    assert feasible == feasibility
+    res = milp.encode_and_run(params)
+    assert res.feasible == feasibility
 
 def test_encode_pred():
     # TODO
@@ -38,4 +40,13 @@ def test_encode_g():
 
 def test_encode_neg():
     # TODO
+    pass
+
+
+@params([
+    '⋄[0,1](x1 > 2)',
+    '□[2,3]⋄[0,1](x1 > 2)',
+    '(□[2,3]⋄[0,1](x1 > 2)) ∧ (⋄[0,1](x1 > 2))'
+])
+def test_active_times(x):
     pass

@@ -1,5 +1,16 @@
 from enum import Enum
 
+UNREPAIRABLE = {
+    "INIT",
+    "DYNAMICS", 
+    "FIXED_INPUT",
+    "SYS_INPUT_UPPER",
+    "SYS_INPUT_LOWER",
+    "ENV_INPUT_UPPER",
+    "ENV_INPUT_LOWER",
+    "ASSERT_FEASIBLE",
+}
+
 Kind = Enum(
     "Kind",
     [    

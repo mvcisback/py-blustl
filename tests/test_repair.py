@@ -30,7 +30,7 @@ class TestSTLParser(unittest.TestCase):
 
     def structure_test(self, n, change_structure, kind):
         phi = stl_parser.parse_stl("G[?, ?](x2 < 4)")
-        r = change_structure(phi, n)
+        r = list(change_structure(phi, n))
         self.assertEqual(len(r), 2*n)
         for phi2 in r:
             self.assertEqual(phi2.args[0], phi)

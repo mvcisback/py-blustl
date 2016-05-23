@@ -21,7 +21,10 @@ class Interval(namedtuple('I', ['lower', 'upper'])):
 class NaryOpSTL(namedtuple('NaryOp', ['args'])):
     OP = "?"
     def __repr__(self):
-        if self.args:
+        n = len(self.args)
+        if n == 1:
+            return "{}".format(self.args[0])
+        elif self.args:
             rep = "({})" + " {op} ({})"*(len(self.args) - 1)
             return rep.format(*self.args, op=self.OP)
         else:

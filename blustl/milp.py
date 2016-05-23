@@ -18,7 +18,7 @@ from collections import defaultdict, Counter, namedtuple
 from functools import partial, singledispatch
 
 import pulp as lp
-from funcy import mapcat, pluck, group_by, drop, walk_values, compose
+from funcy import cat, mapcat, pluck, group_by, drop, walk_values, compose
 
 from blustl import stl
 from blustl.game import Game, Phi
@@ -41,6 +41,29 @@ class Store(object):
         self._constr_counter = Counter()
         self._count = 0
         self.model = lp.LpProblem(DEFAULT_NAME, lp.LpMaximize)
+        self.add_state_vars(g, x=x, u=u, w=w)
+
+
+    def add_state_vars(self, g:Game, *, x, u, w):
+        # Add state, input, and env vars
+        elems = [
+            ('x', g.dyn.n_vars, self.x, x), 
+            ('u', g.dyn.n_sys, self.u, u), 
+            ('w', g.dyn.n_env, self.w, w)
+        ]
+
+        for pre, num, d, fixed in elems:
+            # TODO: support taking bounds from phi/params
+            d2 = dict(fixed) if fixed else {}
+            ub, lb = (100, -100) if pre == 'x' else (1, 0)
+            for i, t in product(range(num), range(g.N + 1)):
+                if (i, t) in d2:
+                    d[i][t] = d2[i, t]
+                else:
+                    name = "{}{}_{}".format(pre, i, t)
+                    d[i][t] = lp.LpVariable(cat=C.Real.value, name=name, 
+                                            lowBound=lb,  upBound=ub)
+
 
 
     def add_constr(self, constr, phi:"STL"=None, kind:K=None):
@@ -72,30 +95,9 @@ def z(x:"STL", t:int, i:int):
     return lp.LpVariable(cat=cat.value, name=name)
 
 
-def add_state_vars(s:Store, g:Game):
-    # Add state, input, and env vars
-    elems = [
-        ('x', g.dyn.n_vars, s.x, x), 
-        ('u', g.dyn.n_sys, s.u, u), 
-        ('w', g.dyn.n_env, s.w, w)
-    ]
-
-    for pre, num, d, fixed in elems:
-        # TODO: support taking bounds from phi/params
-        d2 = dict(fixed) if fixed else {}
-        ub, lb = (100, -100) if pre == 'x' else (1, 0)
-        for i, t in product(range(num), range(g.N + 1)):
-            if (i, t) in d2:
-                d[i][t] = d2[i, t]
-            else:
-                name = "{}{}_{}".format(pre, i, t)
-                d[i][t] = lp.LpVariable(cat=C.Real.value, name=name, 
-                                        lowBound=lb,  upBound=ub)
-
-
 def timed_vars(phi, g:Game):
     times = dict(active_times(phi, dt=g.dt, N=g.N))
-    for i, x in enumerate(stl.tree(phi)):
+    for i, x in enumerate(stl.walk(phi)):
         for t in times[x]:
             yield (x, t), z(phi, t, i)
 
@@ -103,32 +105,34 @@ def timed_vars(phi, g:Game):
 @singledispatch
 def encode(g:Game, x=None, u=None, w=None, p1=True):
     """STL -> MILP"""
-
+    
     sys, env = stl.And(g.phi.sys), stl.And(g.phi.env)
+
     phi = stl.Or((sys, stl.Neg(env))) if g.phi.env else sys
     if not p1:
         phi = stl.Neg(phi)
 
     store = Store(g, x=x, u=u, w=w)
-    store.z.update(dict(timed_vars(phi)))
+    store.z.update(dict(timed_vars(phi, g)))
 
-    stl_constr = chain(encode(x, t, store, g) for x,t in store.z.items())
+    stl_constr = cat(encode(x, t, store, g) for x, t in store.z.keys())
     init_constr = ((store.x[x.lit][0] == x.const, K.INIT) for x in g.phi.init)
-    constraints = [
+    constraints = chain(
         stl_constr,
         init_constr,
         encode(phi, 0, store, g),
         encode_state_evolution(store, g),
-        [store.z(phi, 0) == 1, K.ASSERT_FEASIBLE], # Assert Feasible
-    ]
-
+        [(store.z[phi, 0] == 1, K.ASSERT_FEASIBLE)], # Assert Feasible
+    )
+    
     # Add Constraints
     for constr, kind in constraints:
         store.add_constr(constr, phi, kind=kind)
 
     # Create Objective
     # TODO: support alternative objective functions
-    store.model.setObjective(store.z(phi, 0))
+    store.model.setObjective(store.z[phi, 0])
+
 
     return store.model, store.constr_lookup
 
@@ -136,7 +140,7 @@ def encode(g:Game, x=None, u=None, w=None, p1=True):
 @encode.register(stl.Pred)
 def _(psi, t:int, s:Store, _):
     x = s.x[psi.lit][t]
-    z_t = s.z(psi, t)
+    z_t = s.z[psi, t]
 
     M = 1000  # TODO
     # TODO: come up w. better value for eps
@@ -149,12 +153,12 @@ def _(psi, t:int, s:Store, _):
 
 @encode.register(stl.Neg)
 def _(phi, t:int, s:Store, _):
-    yield s.z(phi, t) == 1 - s.z(phi.arg, t), K.NEG
+    yield s.z[phi, t] == 1 - s.z[phi.arg, t], K.NEG
 
 
 def encode_bool_op(psi, t:int, s:Store, g:Game, *, k:Kind, isor:bool):
-    elems = (s.z(psi2, t) for psi2 in psi.args)
-    yield from encode_op(s.z(psi, t), elems, s, psi, k=k, isor=isor)
+    elems = [s.z[psi2, t] for psi2 in psi.args]
+    yield from encode_op(s.z[psi, t], elems, s, psi, k=k, isor=isor)
 
 
 def step(t:float, dt:float):
@@ -163,9 +167,13 @@ def step(t:float, dt:float):
 
 def encode_temp_op(psi, t:int, s:Store, g:Game, *, k:Kind, isor:bool):
     a, b = map(partial(step, dt=g.dt), psi.interval)
-    elems = [s.z(psi.arg, t + i) for i in range(a, b + 1) if t + i <= g.N]
+    try:
+        elems = [s.z[psi.arg, t + i] for i in range(a, b + 1) if t + i <= g.N]
+    except:
+        import ipdb; ipdb.set_trace()
 
-    yield from encode_op(s.z(psi, t), elems, s, psi, k=k, isor=isor)
+
+    yield from encode_op(s.z[psi, t], elems, s, psi, k=k, isor=isor)
 
 
 def encode_op(z_psi, elems, s:Store, phi, *, k:Kind, isor:bool):
@@ -185,7 +193,7 @@ encode.register(stl.G)(partial(encode_temp_op, k=(K.G, K.G_TOTAL), isor=False))
 def encode_and_run(params, *, x=None, u=None, w=None):
     model, constr_map = encode(params, x=x, u=u, w=w)
     status = lp.LpStatus[model.solve(lp.solvers.COIN())]
-    
+
     if status in ('Infeasible', 'Unbounded'):
         return Result(False, model, None, None)
 
@@ -202,12 +210,11 @@ def encode_and_run(params, *, x=None, u=None, w=None):
 
 
 def active_times(phi, *, dt, N, t_0=0, t_f=0):
-    if not isinstance(phi, stl.ModalOp):
-        yield phi, range(0)
-    else:
-        lo, hi = phi.interval
+    yield phi, range(t_0, t_f + 1)
+
+    if not isinstance(phi, stl.Pred):
+        lo, hi = phi.interval if isinstance(phi, stl.ModalOp) else (0, 0)
         f = lambda x: min(step(x, dt=dt), N)
         lo2, hi2 = map(f, (t_0 + lo, t_f + hi))
-        yield phi, range(lo2, hi2)
         for child in phi.children():
             yield from active_times(child, dt=dt, N=N, t_0=lo2, t_f=hi2) 
