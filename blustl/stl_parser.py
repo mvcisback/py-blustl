@@ -36,6 +36,11 @@ interval = "[" __ const_or_unbound __ "," __ const_or_unbound __ "]"
 
 const_or_unbound = unbound / const
 
+lineq = terms _ op _ const_or_unbound
+term = ((dt __ "*" __)? const __ "*" __)? id
+terms = (term __ ("+"/"-") __ term) / term
+dt = "dt"
+
 unbound = "?"
 id = ("x" / "u" / "w") ~r"\d+"
 const = ~r"[\+\-]?\d*(\.\d+)?"

@@ -55,7 +55,7 @@ def cegis(params, w0, p1=True):
     ws = {w0}
     costs = {}
     while True:
-        responses = [best_response(params, w=w, p1) for w in ws]
+        responses = [best_response(params, w=w, p1=p1) for w in ws]
         
         J, w, u, iis = min(responses)
         w = yield J, w, u, iis
@@ -67,8 +67,8 @@ def cegis(params, w0, p1=True):
 
 
 # TODO: memomize
-def best_response(params, w=None, p1):
-    feasible, output = milp.encode_and_run(params, w=w, p1)
+def best_response(params, w=None, *, p1):
+    feasible, output = milp.encode_and_run(params, w=w, p1=p1)
     if not feasible:
         iis = output
         return -oo, w, None, iis
