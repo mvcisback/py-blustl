@@ -1,5 +1,8 @@
 # -*- coding: utf-8 -*-
-
+"""
+TODO: write tests to check against actual min/max for constraints
+ideally using the hypothesis library
+"""
 from nose2.tools import params
 import unittest
 
@@ -33,7 +36,7 @@ class TestEncoding(unittest.TestCase):
 
         self.phi3 = parse_stl('x3 < 3')
         self.phi1 = parse_stl('x1 > 2')
-        self.phiF = parse_stl('⋄[0,1](x1 > 2)')
+        self.phiF = parse_stl('◇[0,1](x1 > 2)')
         self.phiOr = parse_stl('(x1 > 2) or (x3 < 3)')
         self.phiG = parse_stl('□[0,1](x1 > 2)')
         self.phiAnd = parse_stl('(x1 > 2) and (x3 < 3)')
@@ -80,15 +83,4 @@ class TestEncoding(unittest.TestCase):
         assert constrs[0][0]
 
 
-
-@params(
-    ('⋄[0,1](x1 > 2)', (range(0, 1), range(0, 3))),
-    ('□[2,3]⋄[0,1](x1 > 2)', (range(0, 1), range(4, 7), range(4, 9))),
-    ('(□[2,3]⋄[0,1](x1 > 2)) ∧ (⋄[0,1](x1 > 2))', 
-     (range(1), range(1), range(4, 7), range(4, 9), range(1), range(3))),
-)
-def test_active_times(x, rngs):
-    x = parse_stl(x)
-    _rngs = tuple(pluck(1, milp.active_times(x, dt=0.5, N=10)))
-    assert rngs == _rngs
 

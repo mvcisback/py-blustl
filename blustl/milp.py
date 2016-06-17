@@ -7,6 +7,10 @@
 # TODO: weight IIS slacks based priority
 # TODO: move model out of store
 # TODO: make store simply a namedtuple
+# TODO: Look into using SMT
+# TODO: move dynamics out of encoding
+# TODO: Remove dynamics/time info
+# TODO: Add constraint that x < M
 
 
 from __future__ import division
@@ -21,7 +25,7 @@ import pulp as lp
 from funcy import cat, mapcat, pluck, group_by, drop, walk_values, compose
 
 from blustl import stl
-from blustl.game import Game, Phi
+from blustl.game import Game, Phi, step, active_times
 from blustl.constraint_kinds import Kind as K, Kind
 from blustl.constraint_kinds import Category as C
 
@@ -161,10 +165,6 @@ def encode_bool_op(psi, t:int, s:Store, g:Game, *, k:Kind, isor:bool):
     yield from encode_op(s.z[psi, t], elems, s, psi, k=k, isor=isor)
 
 
-def step(t:float, dt:float):
-    return int(ceil(t / dt))
-
-
 def encode_temp_op(psi, t:int, s:Store, g:Game, *, k:Kind, isor:bool):
     a, b = map(partial(step, dt=g.dt), psi.interval)
     elems = [s.z[psi.arg, t + i] for i in range(a, b + 1) if t + i <= g.N]
@@ -203,15 +203,3 @@ def encode_and_run(params, *, x=None, u=None, w=None):
         return Result(True, model, cost, solution)
     else:
         raise NotImplementedError
-
-
-def active_times(phi, *, dt, N, t_0=0, t_f=0):
-    f = lambda x: min(step(x, dt=dt), N)
-    yield phi, range(f(t_0), f(t_f) + 1)
-    if not isinstance(phi, stl.Pred):
-        lo, hi = phi.interval if isinstance(phi, stl.ModalOp) else (0, 0)
-        t_0 += lo
-        t_f += hi
-        lo2, hi2 = map(f, (t_0, t_f))
-        for child in phi.children():
-            yield from active_times(child, dt=dt, N=N, t_0=t_0, t_f=t_f) 

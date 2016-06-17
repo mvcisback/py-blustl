@@ -1,10 +1,18 @@
 # -*- coding: utf-8 -*-
+"""
+"""
+
 from collections import namedtuple
 from typing import Union
+from enum import Enum
 
-class Pred(namedtuple('P', ['lit', 'op', 'const'])):
+VarKind = Enum("VarKind", ["x", "u", "w"])
+str_to_varkind = {"x": VarKind.x, "u": VarKind.u, "w": VarKind.w}
+
+class Pred(namedtuple('P', ['lit', 'op', 'const', 'kind'])):
     def __repr__(self):
-        return "x{} {} {}".format(self.lit, self.op, self.const)
+        return "{k}{} {} {}".format(
+            self.lit, self.op, self.const, k=self.kind.name)
 
     def children(self):
         return []
@@ -48,7 +56,7 @@ class ModalOp(namedtuple('ModalOp', ['interval', 'arg'])):
 
 class F(ModalOp):
     def __repr__(self):
-        return "⋄{}({})".format(self.interval, self.arg)
+        return "◇{}({})".format(self.interval, self.arg)
 
 
 class G(ModalOp):

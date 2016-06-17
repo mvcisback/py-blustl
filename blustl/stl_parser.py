@@ -18,36 +18,26 @@ from blustl import stl
 from blustl.game import Phi, SS, Dynamics, Game
 
 STL_GRAMMAR = Grammar(u'''
-env = phi
-sys = phi (_ rank)?
-
+phi = (g / f / pred / or / and / paren_phi) (__ rank)?
 rank = "[" const "]"
 
-phi = g / f / gf / fg / pred / or / and
-phi2 = pred / or2 / and2
-pred = id _ op _ const_or_unbound
-
 paren_phi = "(" __ phi __ ")"
-paren_phi2 = "(" __ phi2 __ ")"
+pred = id _ op _ const_or_unbound
 
 or = paren_phi _ ("∨" / "or") _ paren_phi
 and = paren_phi _ ("∧" / "and") _ paren_phi
-or2 = paren_phi2 _ ("∨" / "or") _ paren_phi2
-and2 = paren_phi2 _ ("∧" / "and") _ paren_phi2
 
-f = F interval paren_phi2
-g = G interval paren_phi2
-fg = F interval G interval paren_phi2
-gf = G interval F interval paren_phi2
+f = F interval phi
+g = G interval phi
 
-F = "F" / "⋄"
+F = "F" / "◇"
 G = "G" / "□"
 interval = "[" __ const_or_unbound __ "," __ const_or_unbound __ "]"
 
 const_or_unbound = unbound / const
 
 unbound = "?"
-id = "x" ~r"\d+"
+id = ("x" / "u" / "w") ~r"\d+"
 const = ~r"[\+\-]?\d*(\.\d+)?"
 op = ">=" / "<=" / "<" / ">" / "="
 _ = ~r"\s"+
@@ -83,20 +73,14 @@ class STLVisitor(NodeVisitor):
         return children[1]
 
     def visit_phi(self, _, children):
-        return children[0]
-
-    def visit_phi2(self, _, children):
-        return children[0]
+        return children[0][0]
 
     def visit_paren_phi(self, _, children):
         return children[2]
 
-    def visit_paren_phi2(self, _, children):
-        return children[2]
-
     def visit_pred(self, _, children):
-        id, _, op, _, const = children
-        return stl.Pred(id, op, const[0])
+        (kind, id), _, op, _, const = children
+        return stl.Pred(id, op, const[0], kind)
 
     def visit_interval(self, _, children):
         _, _, left, _, _, _, right, _, _ = children
@@ -136,7 +120,8 @@ class STLVisitor(NodeVisitor):
         return op.text
 
     def visit_id(self, name, children):
-        return int(name.text[1:])
+        var_kind, *iden = name.text
+        return stl.str_to_varkind[var_kind] ,int("".join(iden))
 
     def visit_const(self, const, children):
         return float(const.text)
@@ -171,9 +156,8 @@ def parse_matrix(mat_str) -> np.array:
 
 def from_yaml(content) -> Game:
     g = yaml.load(content)
-
-    sys = tuple(parse_stl(x, rule="sys") for x in g.get('sys', []))
-    env = tuple(parse_stl(x, rule="env") for x in g.get('env', []))
+    sys = tuple(parse_stl(x) for x in g.get('sys', []))
+    env = tuple(parse_stl(x) for x in g.get('env', []))
     init = [parse_stl(x, rule="pred") for x in g['init']]
     phi = Phi(sys, env, init)
     ss = SS(*map(parse_matrix, op.itemgetter('A', 'B')(g['state_space'])))

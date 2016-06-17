@@ -43,7 +43,7 @@ def temporal_strengthen(phi):
 
 
 def _change_structure(phi, n, op, modal_op):
-    f = lambda x: op([phi, modal_op(unbounded, stl.Pred([1], x[0], '?'))])
+    f = lambda x: op([phi, modal_op(unbounded, stl.Pred([1], x[0], '?', stl.VarKind.x))])
     return map(f, product(("<=", ">="), range(0, n)))
 
 

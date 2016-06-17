@@ -9,14 +9,14 @@ def main():
     with open('examples/example1.stl', 'r') as f:
         print(from_yaml(f))
 
-ex1 = ('x1 > 2', stl.Pred(1, ">", 2.))
+ex1 = ('x1 > 2', stl.Pred(1, ">", 2., stl.VarKind.x))
 i1 = stl.Interval(0., 1.)
 i2 = stl.Interval(2., 3.)
-ex2 = ('⋄[0,1](x1 > 2)', stl.F(i1, ex1[1]))
-ex3 = ('□[2,3]⋄[0,1](x1 > 2)', stl.G(i2, ex2[1]))
+ex2 = ('◇[0,1](x1 > 2)', stl.F(i1, ex1[1]))
+ex3 = ('□[2,3]◇[0,1](x1 > 2)', stl.G(i2, ex2[1]))
 ex4 = ('(x1 > 2) or ((x1 > 2) or (x1 > 2))', 
        stl.Or((ex1[1], ex1[1], ex1[1])))
-
+ 
 example_ymls = glob('examples/*')
 
 class TestSTLParser(unittest.TestCase):
