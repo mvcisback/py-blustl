@@ -9,13 +9,29 @@ from enum import Enum
 VarKind = Enum("VarKind", ["x", "u", "w"])
 str_to_varkind = {"x": VarKind.x, "u": VarKind.u, "w": VarKind.w}
 
-class Pred(namedtuple('P', ['lit', 'op', 'const', 'kind'])):
+class LinEq(namedtuple("LinEquality", ["terms", "op", "const"])):
     def __repr__(self):
-        return "{k}{} {} {}".format(
-            self.lit, self.op, self.const, k=self.kind.name)
+        n = len(self.terms)
+        rep = "{}"
+        if n > 1:
+            rep += " + {}"*(n - 1)
+        rep += " {op} {c}"
+        return rep.format(*self.terms, op=self.op, c=self.const)
 
     def children(self):
         return []
+
+
+class Var(namedtuple("Var", ["kind", "id"])):
+    def __repr__(self):
+        return "{k}{i}".format(k=self.kind.name, i=self.id)
+
+
+class Term(namedtuple("Term", ["dt", "coeff", "var"])):
+    def __repr__(self):
+        dt = "dt*" if self.dt else ""
+        coeff = str(self.coeff) + "*" if self.coeff != 1 else ""
+        return "{dt}{c}{v}".format(dt=dt, c=coeff, v=self.var)
 
 
 class Interval(namedtuple('I', ['lower', 'upper'])):
@@ -82,4 +98,4 @@ def walk(stl):
 def tree(stl):
     return {x:set(x.children()) for x in walk(stl) if x.children()}
 
-STL = Union[Pred, NaryOpSTL, ModalOp, Neg]
+STL = Union[LinEq, NaryOpSTL, ModalOp, Neg]

@@ -18,7 +18,7 @@ from blustl import stl
 from blustl.game import Phi, SS, Dynamics, Game
 
 STL_GRAMMAR = Grammar(u'''
-phi = (g / f / pred / or / and / paren_phi) (__ rank)?
+phi = (g / f / lineq / or / and / paren_phi) (__ rank)?
 rank = "[" const "]"
 
 paren_phi = "(" __ phi __ ")"
@@ -38,7 +38,7 @@ const_or_unbound = unbound / const
 
 lineq = terms _ op _ const_or_unbound
 term = ((dt __ "*" __)? const __ "*" __)? id
-terms = (term __ ("+"/"-") __ term) / term
+terms = (term __ ("+"/"-") __ terms) / term
 dt = "dt"
 
 unbound = "?"
@@ -83,10 +83,6 @@ class STLVisitor(NodeVisitor):
     def visit_paren_phi(self, _, children):
         return children[2]
 
-    def visit_pred(self, _, children):
-        (kind, id), _, op, _, const = children
-        return stl.Pred(id, op, const[0], kind)
-
     def visit_interval(self, _, children):
         _, _, left, _, _, _, right, _, _ = children
         return stl.Interval(left[0], right[0])
@@ -126,10 +122,35 @@ class STLVisitor(NodeVisitor):
 
     def visit_id(self, name, children):
         var_kind, *iden = name.text
-        return stl.str_to_varkind[var_kind] ,int("".join(iden))
+        return stl.Var(stl.str_to_varkind[var_kind] ,int("".join(iden)))
 
     def visit_const(self, const, children):
         return float(const.text)
+
+    def visit_dt(self, _, _1):
+        return "dt"
+
+    def visit_term(self, _, children):
+        coeffs, var = children
+        if coeffs:
+            dt, c, *_ = coeffs[0]
+        else:
+            dt, c = False, 1
+        # TODO: add symbolic val for dt
+        
+        return stl.Term(bool(dt), c, var)
+
+    def visit_terms(self, _, children):
+        if isinstance(children[0], list):
+            term, *_, terms = children[0]
+            return [term] + terms
+        else:
+            return children
+
+    def visit_lineq(self, _, children):
+        terms, _1, op, _2, const = children
+        return stl.LinEq(terms, op, const[0])
+
 
 
 class MatrixVisitor(NodeVisitor):
@@ -163,15 +184,14 @@ def from_yaml(content) -> Game:
     g = yaml.load(content)
     sys = tuple(parse_stl(x) for x in g.get('sys', []))
     env = tuple(parse_stl(x) for x in g.get('env', []))
-    init = [parse_stl(x, rule="pred") for x in g['init']]
+    init = [parse_stl(x) for x in g['init']]
     phi = Phi(sys, env, init)
     ss = SS(*map(parse_matrix, op.itemgetter('A', 'B')(g['state_space'])))
     width = g.get('explore_width', 5)
     dyn = Dynamics(ss, g['num_vars'], g['num_sys_inputs'], g['num_env_inputs'])
     dt = int(g['dt'])
     steps = int(ceil(int(g['time_horizon']) / dt))
-
-    assert len(set(pluck_attr('lit', phi.init))) <= dyn.n_vars
+    
     assert ss.A.shape == (dyn.n_vars, dyn.n_vars)
     assert ss.B.shape == (dyn.n_vars, dyn.n_sys + dyn.n_env)
 

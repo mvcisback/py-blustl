@@ -39,7 +39,7 @@ def lstl_to_milp():
 def active_times(phi, *, dt:int, N:int, t_0=0, t_f=0):
     f = lambda x: min(step(x, dt=dt), N)
     yield phi, range(f(t_0), f(t_f) + 1)
-    if not isinstance(phi, stl.Pred):
+    if not isinstance(phi, stl.LinEq):
         lo, hi = phi.interval if isinstance(phi, stl.ModalOp) else (0, 0)
         t_0 += lo
         t_f += hi

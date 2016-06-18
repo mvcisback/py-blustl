@@ -9,7 +9,11 @@ def main():
     with open('examples/example1.stl', 'r') as f:
         print(from_yaml(f))
 
-ex1 = ('x1 > 2', stl.Pred(1, ">", 2., stl.VarKind.x))
+ex1 = ('x1 > 2', stl.LinEq(
+    [stl.Term(False, 1, stl.Var(stl.VarKind.x, 1))],
+    ">",
+    2.0
+))
 i1 = stl.Interval(0., 1.)
 i2 = stl.Interval(2., 3.)
 ex2 = ('◇[0,1](x1 > 2)', stl.F(i1, ex1[1]))
