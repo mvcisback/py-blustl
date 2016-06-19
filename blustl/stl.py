@@ -22,9 +22,10 @@ class LinEq(namedtuple("LinEquality", ["terms", "op", "const"])):
         return []
 
 
-class Var(namedtuple("Var", ["kind", "id"])):
+class Var(namedtuple("Var", ["kind", "id", "prev"])):
     def __repr__(self):
-        return "{k}{i}".format(k=self.kind.name, i=self.id)
+        prev_str = "'" if self.prev else ""
+        return "{k}{i}{p}".format(k=self.kind.name, i=self.id, p=prev_str)
 
 
 class Term(namedtuple("Term", ["dt", "coeff", "var"])):

@@ -5,7 +5,7 @@ TODO: Encode time in SMT clause
 TODO: Annotate stl with priority 
 TODO: Annotate stl with name
 TODO: Annotate stl with changeability
-
+TODO: Game to pdf
 """
 
 from itertools import product, chain, starmap
@@ -22,7 +22,7 @@ SS = namedtuple("StateSpace", ["A", "B"])
 Dynamics = namedtuple("Dynamics", ["ss" , "n_vars", "n_sys", "n_env"])
 Game = namedtuple("Game", ["phi", "dyn", "width", "dt", "N"])
 
-def game_to_lstl(g:Game):
+def game_to_sl(g:Game):
     sys, env = stl.And(g.phi.sys), stl.And(g.phi.env)
     # TODO: Compute formula for dynamics 
     # G (x' = A x + B u + C w)
@@ -30,11 +30,18 @@ def game_to_lstl(g:Game):
     # A must update next state and move current state to past 
     # and update current state based on current past state
     # A' = [ 0 A2; 0 I ]
-    
     return 
 
-def lstl_to_milp():
-    pass
+
+def stl_to_sl(stl, dt):
+    """Signal Temporal Logic -> Signal Logic
+
+    Removes temporal operator
+    """
+    # Compute active_times
+    # Walk through tree and expand temporal operators
+    
+
 
 def active_times(phi, *, dt:int, N:int, t_0=0, t_f=0):
     f = lambda x: min(step(x, dt=dt), N)
