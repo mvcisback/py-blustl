@@ -30,9 +30,10 @@ def game_to_stl(g:Game) -> "STL":
     # TODO: replace x' with x[t-dt]
     # TODO: conjunct phi with dynamics
     sys, env = stl.And(g.phi.sys), stl.And(g.phi.env),
-    phi = stl.Or((sys, stl.Neg(env))) if g.phi.env else sys
-    dyn = stl.And(g.dyn.eq)
-    return stl.And([phi, dyn])
+    phi = [stl.Or((sys, stl.Neg(env))) if g.phi.env else sys]
+    dyn = list(g.dyn.eq)
+    init = list(g.phi.init)
+    return stl.And(phi + init + dyn)
 
 
 def game_to_sl(g:Game) -> "SL":
@@ -104,8 +105,7 @@ def from_yaml(content:str) -> Game:
     g = yaml.load(content)
     sys = tuple(parse_stl(x) for x in g.get('sys', []))
     env = tuple(parse_stl(x) for x in g.get('env', []))
-
-    init = [parse_stl(x) for x in g['init']]
+    init = tuple(parse_stl(x) for x in g.get('init', []))
     phi = Phi(sys, env, init)
 
     eq = tuple(parse_stl(x) for x in g.get('dyn', []))
