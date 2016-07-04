@@ -9,15 +9,8 @@ from itertools import repeat
 from typing import Union
 from enum import Enum
 
-from funcy import walk_values, drop
-from lenses import lens
-
 VarKind = Enum("VarKind", ["x", "u", "w"])
 str_to_varkind = {"x": VarKind.x, "u": VarKind.u, "w": VarKind.w}
-
-class STL(object):
-    pass
-
 
 class LinEq(namedtuple("LinEquality", ["terms", "op", "const"])):
     def __repr__(self):
@@ -68,9 +61,6 @@ class NaryOpSTL(namedtuple('NaryOp', ['args'])):
     def children(self):
         return self.args
 
-    def succ_lens(self):
-        return lens().args
-
 
 class Or(NaryOpSTL):
     OP = "∨"
@@ -82,9 +72,6 @@ class And(NaryOpSTL):
 class ModalOp(namedtuple('ModalOp', ['interval', 'arg'])):
     def children(self):
         return [self.arg]
-
-    def succ_lens(self):
-        return lens().arg
 
 
 class F(ModalOp):
@@ -104,9 +91,6 @@ class Neg(namedtuple('Neg', ['arg'])):
     def children(self):
         return [self.arg]
 
-    def succ_lens(self):
-        return lens().arg
-
 
 def walk(stl, bfs=False):
     """Walks Ast. Defaults to DFS unless BFS flag is set."""
@@ -120,4 +104,3 @@ def walk(stl, bfs=False):
 
 def tree(stl):
     return {x:set(x.children()) for x in walk(stl) if x.children()}
-

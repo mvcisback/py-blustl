@@ -11,15 +11,12 @@
 from functools import partialmethod
 from collections import namedtuple
 import operator as op
-from math import ceil
 
 from parsimonious import Grammar, NodeVisitor
-from funcy import cat, flatten, pluck_attr
-import yaml
+from funcy import flatten
 import numpy as np
 
 from blustl import stl
-from blustl.game import Phi, SS, Dynamics, Game
 
 STL_GRAMMAR = Grammar(u'''
 phi = (g / f / lineq / or / and / paren_phi)
@@ -169,22 +166,3 @@ def parse_stl(stl_str:str, rule:str="phi") -> "STL":
 
 def parse_matrix(mat_str:str) -> np.array:
     return np.array(MatrixVisitor().visit(MATRIX_GRAMMAR.parse(mat_str)))
-
-
-def from_yaml(content:str) -> Game:
-    g = yaml.load(content)
-    sys = tuple(parse_stl(x) for x in g.get('sys', []))
-    env = tuple(parse_stl(x) for x in g.get('env', []))
-    init = [parse_stl(x) for x in g['init']]
-    phi = Phi(sys, env, init)
-    ss = SS(*map(parse_matrix, op.itemgetter('A', 'B')(g['state_space'])))
-    width = g.get('explore_width', 5)
-    dyn = Dynamics(ss, g['num_vars'], g['num_sys_inputs'], g['num_env_inputs'])
-    dt = int(g['dt'])
-    tf = g['time_horizon']
-    steps = int(ceil(int(tf) / dt))
-    
-    assert ss.A.shape == (dyn.n_vars, dyn.n_vars)
-    assert ss.B.shape == (dyn.n_vars, dyn.n_sys + dyn.n_env)
-
-    return Game(phi, dyn, width, dt, steps, tf)
