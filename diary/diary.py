@@ -5,8 +5,8 @@ from copy import deepcopy
 
 from numpy import hstack
 
-import stl
-import milp
+from stl import stl
+from blustl import milp
 from constraint_kinds import Kind as K
 
 oo = float('inf')

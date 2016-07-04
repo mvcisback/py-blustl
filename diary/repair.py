@@ -4,7 +4,7 @@ from collections import deque
 
 from funcy import mapcat
 
-from blustl import stl
+from stl import stl
 from blustl.constraint_kinds import UNREPAIRABLE, Kind as K
 
 

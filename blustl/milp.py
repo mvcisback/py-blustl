@@ -24,7 +24,7 @@ from functools import partial, singledispatch
 import pulp as lp
 from funcy import cat, mapcat, pluck, group_by, drop, walk_values, compose
 
-from blustl import stl
+from stl import stl
 from blustl.game import Game, Phi, step, active_times
 from blustl.constraint_kinds import Kind as K, Kind
 from blustl.constraint_kinds import Category as C
