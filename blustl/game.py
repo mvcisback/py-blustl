@@ -28,7 +28,6 @@ Meta = namedtuple("Meta", []) # TODO populate
 def game_to_stl(g:Game) -> "STL":
     # TODO: support symbolic matricies
     # TODO: replace x' with x[t-dt]
-    # TODO: conjunct phi with dynamics
     sys, env = stl.And(g.phi.sys), stl.And(g.phi.env),
     phi = [stl.Or((sys, stl.Neg(env))) if g.phi.env else sys]
     dyn = list(g.dyn.eq)
