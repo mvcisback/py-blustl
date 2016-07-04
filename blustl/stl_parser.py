@@ -3,6 +3,10 @@
 # TODO: break out into seperate library
 # TODO: allow matrix to be symbolically parsed in STL_GRAMMAR
 # TODO: allow multiplication to be distributive
+# TODO: support reference specific time points
+# TODO: add Implies and Iff syntactic sugar
+# TODO: add support for parsing Until
+# TODO: properly handle pm when parsing
 
 from functools import partialmethod
 from collections import namedtuple
@@ -43,10 +47,14 @@ vec = ("X" / "U" / "W") ("'")?
 lineq = terms _ op _ const_or_unbound
 term = ((dt __ "*" __)? const __ "*" __)? var
 terms = (term __ ("+"/"-") __ terms) / term
-dt = "dt"
 
+var = id time?
+time = (prime / ("[" "t" __ pm __ const "]"))
+prime = "'"
+
+pm = "+" / "-"
+dt = "dt"
 unbound = "?"
-var = id ("'")?
 id = ("x" / "u" / "w") ~r"\d+" 
 const = ~r"[\+\-]?\d*(\.\d+)?"
 op = ">=" / "<=" / "<" / ">" / "="
@@ -106,8 +114,15 @@ class STLVisitor(NodeVisitor):
         return stl.str_to_varkind[var_kind] ,int("".join(iden))
 
     def visit_var(self, _, children):
-        (var_kind, iden), prime = children
-        return stl.Var(var_kind, iden, bool(prime))
+        (var_kind, iden), time_node = children
+
+        time_node = list(flatten(time_node))
+        time = time_node[0] if len(time_node) > 0 else 0
+            
+        return stl.Var(var_kind, iden, time)
+
+    def visit_prime(self, *_):
+        return -1
 
     def visit_const(self, const, children):
         return float(const.text)
@@ -148,15 +163,15 @@ class MatrixVisitor(NodeVisitor):
         return list(flatten(children))
 
 
-def parse_stl(stl_str, rule="phi") -> "STL":
+def parse_stl(stl_str:str, rule:str="phi") -> "STL":
     return STLVisitor().visit(STL_GRAMMAR[rule].parse(stl_str))
 
 
-def parse_matrix(mat_str) -> np.array:
+def parse_matrix(mat_str:str) -> np.array:
     return np.array(MatrixVisitor().visit(MATRIX_GRAMMAR.parse(mat_str)))
 
 
-def from_yaml(content) -> Game:
+def from_yaml(content:str) -> Game:
     g = yaml.load(content)
     sys = tuple(parse_stl(x) for x in g.get('sys', []))
     env = tuple(parse_stl(x) for x in g.get('env', []))
@@ -166,12 +181,10 @@ def from_yaml(content) -> Game:
     width = g.get('explore_width', 5)
     dyn = Dynamics(ss, g['num_vars'], g['num_sys_inputs'], g['num_env_inputs'])
     dt = int(g['dt'])
-    steps = int(ceil(int(g['time_horizon']) / dt))
+    tf = g['time_horizon']
+    steps = int(ceil(int(tf) / dt))
     
     assert ss.A.shape == (dyn.n_vars, dyn.n_vars)
     assert ss.B.shape == (dyn.n_vars, dyn.n_sys + dyn.n_env)
 
-    return Game(phi, dyn, width, dt, steps)
-
-if __name__ == '__main__':
-    main()
+    return Game(phi, dyn, width, dt, steps, tf)

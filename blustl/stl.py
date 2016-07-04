@@ -1,13 +1,23 @@
 # -*- coding: utf-8 -*-
-"""
-"""
+# TODO: create lens convenience functions
+#    x.lens().set()
+# TODO: create iso lens between sugar and non-sugar
+# TODO: supress + given a + (-b). i.e. want a - b
 
-from collections import namedtuple
+from collections import namedtuple, deque
+from itertools import repeat
 from typing import Union
 from enum import Enum
 
+from funcy import walk_values, drop
+from lenses import lens
+
 VarKind = Enum("VarKind", ["x", "u", "w"])
 str_to_varkind = {"x": VarKind.x, "u": VarKind.u, "w": VarKind.w}
+
+class STL(object):
+    pass
+
 
 class LinEq(namedtuple("LinEquality", ["terms", "op", "const"])):
     def __repr__(self):
@@ -22,10 +32,10 @@ class LinEq(namedtuple("LinEquality", ["terms", "op", "const"])):
         return []
 
 
-class Var(namedtuple("Var", ["kind", "id", "prev"])):
+class Var(namedtuple("Var", ["kind", "id", "time"])):
     def __repr__(self):
-        prev_str = "'" if self.prev else ""
-        return "{k}{i}{p}".format(k=self.kind.name, i=self.id, p=prev_str)
+        time_str = "'" if self.time == -1 else "[t+{}]".format(self.time)
+        return "{k}{i}{t}".format(k=self.kind.name, i=self.id, t=time_str)
 
 
 class Term(namedtuple("Term", ["dt", "coeff", "var"])):
@@ -58,6 +68,9 @@ class NaryOpSTL(namedtuple('NaryOp', ['args'])):
     def children(self):
         return self.args
 
+    def succ_lens(self):
+        return lens().args
+
 
 class Or(NaryOpSTL):
     OP = "∨"
@@ -69,6 +82,9 @@ class And(NaryOpSTL):
 class ModalOp(namedtuple('ModalOp', ['interval', 'arg'])):
     def children(self):
         return [self.arg]
+
+    def succ_lens(self):
+        return lens().arg
 
 
 class F(ModalOp):
@@ -88,15 +104,20 @@ class Neg(namedtuple('Neg', ['arg'])):
     def children(self):
         return [self.arg]
 
+    def succ_lens(self):
+        return lens().arg
 
-def walk(stl):
-    children = [stl]
+
+def walk(stl, bfs=False):
+    """Walks Ast. Defaults to DFS unless BFS flag is set."""
+    pop = deque.popleft if bfs else deque.pop
+    children = deque([stl])
     while len(children) != 0:
-        node = children.pop()
+        node = pop(children)
         yield node
         children.extend(node.children())
+
 
 def tree(stl):
     return {x:set(x.children()) for x in walk(stl) if x.children()}
 
-STL = Union[LinEq, NaryOpSTL, ModalOp, Neg]

@@ -99,7 +99,7 @@ def z(x:"STL", t:int, i:int):
     return lp.LpVariable(cat=cat.value, name=name)
 
 
-def timed_vars(phi, g:Game):
+def timed_vars(phi:"STL", g:Game):
     times = dict(active_times(phi, dt=g.dt, N=g.N))
     for i, x in enumerate(stl.walk(phi)):
         for t in times[x]:
@@ -109,13 +109,8 @@ def timed_vars(phi, g:Game):
 @singledispatch
 def encode(g:Game, x=None, u=None, w=None, p1=True):
     """STL -> MILP"""
-    
-    sys, env = stl.And(g.phi.sys), stl.And(g.phi.env)
-
-    phi = stl.Or((sys, stl.Neg(env))) if g.phi.env else sys
-    if not p1:
-        phi = stl.Neg(phi)
-
+    # TODO: port to new Signal Logic based API
+    raise NotImplementedError
     store = Store(g, x=x, u=u, w=w)
     store.z.update(dict(timed_vars(phi, g)))
 
