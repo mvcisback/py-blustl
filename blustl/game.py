@@ -1,9 +1,9 @@
 """
-TODO: Move dynamics in STL
-TODO: Annotate stl with priority 
-TODO: Annotate stl with name
-TODO: Annotate stl with changeability
 TODO: Game to pdf
+TODO: Include meta information in Game
+- Annotate stl with priority 
+- Annotate stl with name
+- Annotate stl with changeability
 """
 
 from itertools import product, chain, starmap, repeat
@@ -19,31 +19,33 @@ from lenses import lens
 from blustl import stl
 from blustl.stl_parser import parse_stl, parse_matrix
 
-Phi = namedtuple("Phi", ["sys", "env", "init"])
-SS = namedtuple("StateSpace", ["A", "B"])
-Dynamics = namedtuple("Dynamics", ["ss" , "n_vars", "n_sys", "n_env"])
-Game = namedtuple("Game", ["phi", "dyn", "width", "dt", "N", "t_f"])
+Phi = namedtuple("Phi", "sys env init")
+Dynamics = namedtuple("Dynamics", "eq n_vars n_sys n_env")
+Game = namedtuple("Game", "phi dyn ti meta")
+TimeInfo = namedtuple("TimeInfo", "dt N t_f")
+Meta = namedtuple("Meta", []) # TODO populate
 
 def game_to_stl(g:Game) -> "STL":
     # TODO: support symbolic matricies
     # TODO: replace x' with x[t-dt]
     # TODO: conjunct phi with dynamics
-    sys, env = stl.And(g.phi.sys), stl.And(g.phi.env)
+    sys, env = stl.And(g.phi.sys), stl.And(g.phi.env),
     phi = stl.Or((sys, stl.Neg(env))) if g.phi.env else sys
-    return phi
+    dyn = stl.And(g.dyn.eq)
+    return stl.And([phi, dyn])
 
 
 def game_to_sl(g:Game) -> "SL":
     phi = game_to_stl(g)  
-    return stl_to_sl(phi, discretize=partial(discretize, dt=g.dt, N=g.N))
+    return stl_to_sl(phi, discretize=partial(discretize, ti=g.ti))
     
 
 def step(t:float, dt:float) -> int:
     return int(t / dt)
 
 
-def discretize(interval, dt, N):
-    f = lambda x: min(step(x, dt=dt), N)
+def discretize(interval:stl.Interval, ti:TimeInfo):
+    f = lambda x: min(step(x, dt=ti.dt), ti.N)
     t_0, t_f = interval
     return range(f(t_0), f(t_f) + 1)
 
@@ -102,16 +104,15 @@ def from_yaml(content:str) -> Game:
     g = yaml.load(content)
     sys = tuple(parse_stl(x) for x in g.get('sys', []))
     env = tuple(parse_stl(x) for x in g.get('env', []))
+
     init = [parse_stl(x) for x in g['init']]
     phi = Phi(sys, env, init)
-    ss = SS(*map(parse_matrix, op.itemgetter('A', 'B')(g['state_space'])))
-    width = g.get('explore_width', 5)
-    dyn = Dynamics(ss, g['num_vars'], g['num_sys_inputs'], g['num_env_inputs'])
+
+    eq = tuple(parse_stl(x) for x in g.get('dyn', []))
+    dyn = Dynamics(eq, g['num_vars'], g['num_sys_inputs'], g['num_env_inputs'])
+
     dt = int(g['dt'])
     tf = g['time_horizon']
     steps = int(ceil(int(tf) / dt))
-    
-    assert ss.A.shape == (dyn.n_vars, dyn.n_vars)
-    assert ss.B.shape == (dyn.n_vars, dyn.n_sys + dyn.n_env)
-
-    return Game(phi, dyn, width, dt, steps, tf)
+    ti = TimeInfo(dt=dt, t_f=tf, N=steps)
+    return Game(phi=phi, dyn=dyn, ti=ti, meta=Meta())

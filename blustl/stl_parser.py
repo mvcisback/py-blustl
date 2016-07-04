@@ -7,6 +7,10 @@
 # TODO: add Implies and Iff syntactic sugar
 # TODO: add support for parsing Until
 # TODO: properly handle pm when parsing
+# TODO: support variables on both sides of ineq
+# TODO: change way of parsing dt
+# - Allow inside of time index
+# - Allow dt*x rather than dt*1*x
 
 from functools import partialmethod
 from collections import namedtuple
@@ -42,7 +46,8 @@ mat = "A" ~r"\d+"
 vec = ("X" / "U" / "W") ("'")?
 
 lineq = terms _ op _ const_or_unbound
-term = ((dt __ "*" __)? const __ "*" __)? var
+term =  coeff? var
+coeff = (dt __ "*" __)? const __ "*" __
 terms = (term __ ("+"/"-") __ terms) / term
 
 var = id time?
@@ -126,8 +131,12 @@ class STLVisitor(NodeVisitor):
 
     def visit_term(self, _, children):
         coeffs, var = children
-        dt, c, *_ = coeffs[0] if coeffs else False, 1
-        return stl.Term(bool(dt), c, var)
+        (dt, c) = coeffs[0] if coeffs else (False, 1)
+        return stl.Term(dt, c, var)
+
+    def visit_coeff(self, _, children):
+        dt, coeff, *_ = children
+        return bool(dt), coeff
 
     def visit_terms(self, _, children):
         if isinstance(children[0], list):
