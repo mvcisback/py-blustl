@@ -17,7 +17,7 @@ from funcy import pluck, group_by, drop, walk_values, compose
 from lenses import lens
 
 from stl import stl
-from stl.stl_parser import parse_stl, parse_matrix
+from stl.stl_parser import parse_stl
 
 Phi = namedtuple("Phi", "sys env init")
 Dynamics = namedtuple("Dynamics", "eq n_vars n_sys n_env")
