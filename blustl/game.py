@@ -27,7 +27,6 @@ Meta = namedtuple("Meta", []) # TODO populate
 
 def game_to_stl(g:Game) -> "STL":
     # TODO: support symbolic matricies
-    # TODO: replace x' with x[t-dt]
     sys, env = stl.And(g.phi.sys), stl.And(g.phi.env),
     phi = [stl.Or((sys, stl.Neg(env))) if g.phi.env else sys]
     dyn = list(g.dyn.eq)
@@ -68,7 +67,7 @@ def _stl_to_sl(phi, *, curr_len, discretize):
     # Erase Time
     if isinstance(psi, stl.ModalOp):
         Op = stl.And if isinstance(psi, stl.G) else stl.Or
-        tl = time_lens(psi.arg)
+        tl = stl.time_lens(psi.arg)
 
         # Discrete time
         times = discretize(psi.interval)
@@ -86,18 +85,6 @@ def _stl_to_sl(phi, *, curr_len, discretize):
         phi = _stl_to_sl(phi, curr_len=curr_len.arg, discretize=discretize)
         
     return phi
-
-
-def time_lens(phi:"STL") -> lens:
-    if isinstance(phi, stl.LinEq):
-        return lens().terms.each_().var.time
-
-    if isinstance(phi, stl.NaryOpSTL):
-        child_lens = [lens()[i].add_lens(time_lens(c)) for i, c
-                      in enumerate(phi.children())]
-        return lens().args.tuple_(*child_lens).each_()
-    else:
-        return lens().arg.add_lens(time_lens(phi.arg))
 
 
 def from_yaml(content:str) -> Game:
