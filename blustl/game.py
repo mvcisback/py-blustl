@@ -16,8 +16,7 @@ import yaml
 from funcy import pluck, group_by, drop, walk_values, compose
 from lenses import lens
 
-from stl import stl
-from stl.stl_parser import parse_stl
+import stl
 
 Phi = namedtuple("Phi", "sys env init")
 Dynamics = namedtuple("Dynamics", "eq n_vars n_sys n_env")
@@ -25,7 +24,7 @@ Game = namedtuple("Game", "phi dyn ti meta")
 TimeInfo = namedtuple("TimeInfo", "dt N t_f")
 Meta = namedtuple("Meta", []) # TODO populate
 
-def game_to_stl(g:Game) -> "STL":
+def to_stl(g:Game) -> "STL":
     # TODO: support symbolic matricies
     sys, env = stl.And(g.phi.sys), stl.And(g.phi.env),
     phi = [stl.Or((sys, stl.Neg(env))) if g.phi.env else sys]
@@ -34,9 +33,9 @@ def game_to_stl(g:Game) -> "STL":
     return stl.And(phi + init + dyn)
 
 
-def game_to_sl(g:Game) -> "SL":
-    phi = game_to_stl(g)  
-    return stl_to_sl(phi, discretize=partial(discretize, ti=g.ti))
+def to_sl(g:Game) -> "SL":
+    phi = to_stl(g)  
+    return to_sl(phi, discretize=partial(discretize, ti=g.ti))
     
 
 def step(t:float, dt:float) -> int:
@@ -49,12 +48,12 @@ def discretize(interval:stl.Interval, ti:TimeInfo):
     return range(f(t_0), f(t_f) + 1)
 
 
-def stl_to_sl(phi:"STL", discretize) -> "SL":
+def to_sl(phi:"STL", discretize) -> "SL":
     """Returns STL formula with temporal operators erased"""
-    return _stl_to_sl([phi], curr_len=lens()[0], discretize=discretize)[0]
+    return _to_sl([phi], curr_len=lens()[0], discretize=discretize)[0]
     
 
-def _stl_to_sl(phi, *, curr_len, discretize):
+def _to_sl(phi, *, curr_len, discretize):
     """Returns STL formula with temporal operators erased"""
     # Warning: _heavily_ uses the lenses library
     # TODO: support Until
@@ -89,12 +88,12 @@ def _stl_to_sl(phi, *, curr_len, discretize):
 
 def from_yaml(content:str) -> Game:
     g = yaml.load(content)
-    sys = tuple(parse_stl(x) for x in g.get('sys', []))
-    env = tuple(parse_stl(x) for x in g.get('env', []))
-    init = tuple(parse_stl(x) for x in g.get('init', []))
+    sys = tuple(stl.parse(x) for x in g.get('sys', []))
+    env = tuple(stl.parse(x) for x in g.get('env', []))
+    init = tuple(stl.parse(x) for x in g.get('init', []))
     phi = Phi(sys, env, init)
 
-    eq = tuple(parse_stl(x) for x in g.get('dyn', []))
+    eq = tuple(stl.parse(x) for x in g.get('dyn', []))
     dyn = Dynamics(eq, g['num_vars'], g['num_sys_inputs'], g['num_env_inputs'])
 
     dt = int(g['dt'])
