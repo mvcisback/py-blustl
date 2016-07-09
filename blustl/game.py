@@ -24,7 +24,7 @@ Game = namedtuple("Game", "phi dyn ti meta")
 TimeInfo = namedtuple("TimeInfo", "dt N t_f")
 Meta = namedtuple("Meta", []) # TODO populate
 
-def to_stl(g:Game) -> "STL":
+def game_to_stl(g:Game) -> "STL":
     # TODO: support symbolic matricies
     sys, env = stl.And(g.phi.sys), stl.And(g.phi.env),
     phi = [stl.Or((sys, stl.Neg(env))) if g.phi.env else sys]
@@ -33,9 +33,10 @@ def to_stl(g:Game) -> "STL":
     return stl.And(phi + init + dyn)
 
 
-def to_sl(g:Game) -> "SL":
-    phi = to_stl(g)  
-    return to_sl(phi, discretize=partial(discretize, ti=g.ti))
+def game_to_sl(g:Game) -> "SL":
+    phi = game_to_stl(g)  
+    psi = stl_to_sl(phi, discretize=partial(discretize, ti=g.ti))
+    return set_time(psi, t=0, dt=g.ti.dt)
     
 
 def step(t:float, dt:float) -> int:
@@ -48,12 +49,12 @@ def discretize(interval:stl.Interval, ti:TimeInfo):
     return range(f(t_0), f(t_f) + 1)
 
 
-def to_sl(phi:"STL", discretize) -> "SL":
+def stl_to_sl(phi:"STL", discretize) -> "SL":
     """Returns STL formula with temporal operators erased"""
-    return _to_sl([phi], curr_len=lens()[0], discretize=discretize)[0]
+    return _stl_to_sl([phi], curr_len=lens()[0], discretize=discretize)[0]
     
 
-def _to_sl(phi, *, curr_len, discretize):
+def _stl_to_sl(phi, *, curr_len, discretize):
     """Returns STL formula with temporal operators erased"""
     # Warning: _heavily_ uses the lenses library
     # TODO: support Until
@@ -66,7 +67,7 @@ def _to_sl(phi, *, curr_len, discretize):
     # Erase Time
     if isinstance(psi, stl.ModalOp):
         Op = stl.And if isinstance(psi, stl.G) else stl.Or
-        tl = stl.time_lens(psi.arg)
+        tl = stl.time_lens(psi.arg, bind=False)
 
         # Discrete time
         times = discretize(psi.interval)
@@ -101,3 +102,7 @@ def from_yaml(content:str) -> Game:
     steps = int(ceil(int(tf) / dt))
     ti = TimeInfo(dt=dt, t_f=tf, N=steps)
     return Game(phi=phi, dyn=dyn, ti=ti, meta=Meta())
+
+
+def set_time(phi, *, t, dt=0.1):
+    return stl.time_lens(phi).call("evalf", subs={stl.t_sym: t, stl.dt_sym: dt})
