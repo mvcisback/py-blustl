@@ -4,6 +4,9 @@ TODO: Include meta information in Game
 - Annotate stl with priority 
 - Annotate stl with name
 - Annotate stl with changeability
+TODO: add test to make sure phi is hashable after transformation
+TODO: create map from SL expr to matching Temporal Logic term after conversion
+TODO: reimplement set_time w.o. term lens
 """
 
 from itertools import product, chain, starmap, repeat
@@ -13,6 +16,7 @@ import operator as op
 from math import floor, ceil
 
 import yaml
+import funcy as fn
 from funcy import pluck, group_by, drop, walk_values, compose
 from lenses import lens
 
@@ -30,10 +34,11 @@ def game_to_stl(g:Game) -> "STL":
     phi = [stl.Or((sys, stl.Neg(env))) if g.phi.env else sys]
     dyn = list(g.dyn.eq)
     init = list(g.phi.init)
-    return stl.And(phi + init + dyn)
+    return stl.And(tuple(phi + init + dyn))
 
 
 def game_to_sl(g:Game) -> "SL":
+    # TODO: Drop terms from time < 0
     phi = game_to_stl(g)  
     psi = stl_to_sl(phi, discretize=partial(discretize, ti=g.ti))
     return set_time(psi, t=0, dt=g.ti.dt)
@@ -67,12 +72,14 @@ def _stl_to_sl(phi, *, curr_len, discretize):
     # Erase Time
     if isinstance(psi, stl.ModalOp):
         Op = stl.And if isinstance(psi, stl.G) else stl.Or
-        tl = stl.time_lens(psi.arg, bind=False)
 
         # Discrete time
         times = discretize(psi.interval)
 
-        psi = Op([tl.bind(psi.arg) + i for i in times])
+        # Compute terms lens
+        tl = stl.terms_lens(psi.arg)
+
+        psi = Op(tuple(set_time(psi.arg, t=stl.t_sym+i, tl=tl) for i in times))
         phi = curr_len.set(psi, state=phi)
 
     # Recurse and update Phi
@@ -83,7 +90,6 @@ def _stl_to_sl(phi, *, curr_len, discretize):
 
     elif isinstance(psi, stl.Neg):
         phi = _stl_to_sl(phi, curr_len=curr_len.arg, discretize=discretize)
-        
     return phi
 
 
@@ -104,5 +110,13 @@ def from_yaml(content:str) -> Game:
     return Game(phi=phi, dyn=dyn, ti=ti, meta=Meta())
 
 
-def set_time(phi, *, t, dt=0.1):
-    return stl.time_lens(phi).call("evalf", subs={stl.t_sym: t, stl.dt_sym: dt})
+def set_time(phi, *, t, dt=stl.dt_sym, tl=None):
+    if tl is None:
+        tl = stl.terms_lens(phi)
+    subs = {stl.t_sym: t, stl.dt_sym: dt}
+    return tl.call("subs", subs)
+
+
+def vars_in_phi(phi):
+    terms = (x.terms for x in stl.walk(phi) if isinstance(x, stl.LinEq))
+    return set(fn.cat(terms))
