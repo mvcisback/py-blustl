@@ -20,6 +20,7 @@ import funcy as fn
 from funcy import pluck, group_by, drop, walk_values, compose
 from lenses import lens
 
+import sympy
 import stl
 
 Phi = namedtuple("Phi", "sys env init")
@@ -37,11 +38,26 @@ def game_to_stl(g:Game) -> "STL":
     return stl.And(tuple(phi + init + dyn))
 
 
+def negative_time_filter(lineq):
+    times = lens(lineq).terms.each_().time.get_all()
+    return True if any(t < 0 for t in times) else lineq
+
+
 def game_to_sl(g:Game) -> "SL":
-    # TODO: Drop terms from time < 0
     phi = game_to_stl(g)  
+
+    # Erase Modal Ops
     psi = stl_to_sl(phi, discretize=partial(discretize, ti=g.ti))
-    return set_time(psi, t=0, dt=g.ti.dt)
+
+    # Set time
+    focus = stl.lineq_lens(psi, bind=False)
+    psi = set_time(t=0, dt=g.ti.dt, tl=focus.bind(psi).terms.each_())
+
+    # Type cast time to int (and forget about sympy stuff)
+    psi = focus.bind(psi).terms.each_().time.modify(int)
+
+    # Drop terms from time < 0
+    return focus.bind(psi).modify(negative_time_filter)
     
 
 def step(t:float, dt:float) -> int:
@@ -77,9 +93,9 @@ def _stl_to_sl(phi, *, curr_len, discretize):
         times = discretize(psi.interval)
 
         # Compute terms lens
-        tl = stl.terms_lens(psi.arg)
+        terms = stl.terms_lens(psi.arg)
 
-        psi = Op(tuple(set_time(psi.arg, t=stl.t_sym+i, tl=tl) for i in times))
+        psi = Op(tuple(terms.time + i for i in times))
         phi = curr_len.set(psi, state=phi)
 
     # Recurse and update Phi
@@ -110,13 +126,13 @@ def from_yaml(content:str) -> Game:
     return Game(phi=phi, dyn=dyn, ti=ti, meta=Meta())
 
 
-def set_time(phi, *, t, dt=stl.dt_sym, tl=None):
+def set_time(*, t, dt=stl.dt_sym, tl=None):
     if tl is None:
         tl = stl.terms_lens(phi)
-    subs = {stl.t_sym: t, stl.dt_sym: dt}
-    return tl.call("subs", subs)
+    focus = tl.tuple_(lens().time, lens().coeff).each_()
+    return focus.call("subs", {stl.t_sym: t, stl.dt_sym: dt})
 
 
 def vars_in_phi(phi):
-    terms = (x.terms for x in stl.walk(phi) if isinstance(x, stl.LinEq))
-    return set(fn.cat(terms))
+    focus = stl.terms_lens(phi)
+    return set(focus.tuple_(lens().id, lens().time).get_all())
