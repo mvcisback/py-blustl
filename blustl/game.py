@@ -40,8 +40,10 @@ def game_to_stl(g:Game) -> "STL":
 
 def negative_time_filter(lineq):
     times = lens(lineq).terms.each_().time.get_all()
-    return True if any(t < 0 for t in times) else lineq
+    return None if any(t < 0 for t in times) else lineq
 
+
+filter_none = lambda x: [y for y in x if y is not None]
 
 def game_to_sl(g:Game) -> "SL":
     phi = game_to_stl(g)  
@@ -57,7 +59,9 @@ def game_to_sl(g:Game) -> "SL":
     psi = focus.bind(psi).terms.each_().time.modify(int)
 
     # Drop terms from time < 0
-    return focus.bind(psi).modify(negative_time_filter)
+    psi = focus.bind(psi).modify(negative_time_filter)
+    return stl.and_or_lens(psi).args.modify(filter_none)
+    
     
 
 def step(t:float, dt:float) -> int:
