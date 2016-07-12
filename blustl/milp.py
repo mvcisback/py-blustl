@@ -79,7 +79,6 @@ def sl_to_milp(phi:"SL", assigned=None, p1=True):
 
 @singledispatch
 def encode(psi, s):
-    import ipdb; ipdb.set_trace()
     raise NotImplementedError
 
 
