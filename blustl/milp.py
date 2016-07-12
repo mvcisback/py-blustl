@@ -8,7 +8,6 @@
 # TODO: Look into using SMT
 # TODO: Add constraint that x < M
 
-
 from __future__ import division
 
 from itertools import product, chain, starmap
@@ -32,6 +31,7 @@ DEFAULT_NAME = 'controller_synth'
 Result = namedtuple("Result", ["feasible", "model", "cost", "solution"])
 
 def z(x:"STL", i:int):
+    # TODO: come up with better function name
     cat = C.Bool if isinstance(x, stl.LinEq) else C.Real
     if isinstance(x, stl.LinEq):
         prefix = "q"
