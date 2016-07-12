@@ -5,11 +5,7 @@
 # TODO: make inital conditions part of phi
 # TODO: implement IIS via slacks
 # TODO: weight IIS slacks based priority
-# TODO: move model out of store
-# TODO: make store simply a namedtuple
 # TODO: Look into using SMT
-# TODO: move dynamics out of encoding
-# TODO: Remove dynamics/time info
 # TODO: Add constraint that x < M
 
 
@@ -47,48 +43,50 @@ def z(x:"STL", i:int):
     return lp.LpVariable(cat=cat.value, name=name)
 
 
+def add_constr(model, constr, kind:K, i:int):
+    name = "{}{}".format(kind.name, i)
+    model.addConstraint(constr, name=name)
+
+
 def sl_to_milp(phi:"SL", assigned=None, p1=True):
     """STL -> MILP"""
     # TODO: port to new Signal Logic based API
+    # TODO: constraint_map
+    # TODO: optimize away top level Ands
     if assigned is None:
         assigned = {}
 
-    nodes = set(fn.cat(game.vars_in_phi(phi), stl.walk(phi)))
-    store = {x: z(x, i) for i, x in nodes}
+    constraint_map = {}
+    model = lp.LpProblem(DEFAULT_NAME, lp.LpMaximize)
+    lp_vars = set(game.vars_in_phi(phi))
+    nodes = set(stl.walk(phi))
+    store = {x: z(x, i) for i, x in enumerate(nodes | lp_vars)}
 
-    return store
-
-    stl_constr = cat(encode(x, t, store, g) for x, t in store.z.keys())
-    init_constr = ((store.x[x.lit][0] == x.const, K.INIT) for x in g.phi.init)
+    stl_constr = cat(encode(phi, store) for phi in nodes)
     constraints = chain(
         stl_constr,
-        init_constr,
-        encode(phi, 0, store, g),
-        encode_state_evolution(store, g),
-        [(store.z[phi, 0] == 1, K.ASSERT_FEASIBLE)], # Assert Feasible
+        [(store[phi] == 1, K.ASSERT_FEASIBLE)] # Assert Feasibility
     )
     
-    # Add Constraints
-    for constr, kind in constraints:
-        store.add_constr(constr, phi, kind=kind)
+    for i, (constr, kind) in enumerate(constraints):
+        add_constr(model, constr, kind, i)
 
-    # Create Objective
     # TODO: support alternative objective functions
-    store.model.setObjective(store.z[phi, 0])
+    model.setObjective(store[phi])
+    
+    return model, constraint_map
 
-
-    return store.model, store.constr_lookup
 
 @singledispatch
-def encode(_):
+def encode(psi, s):
+    import ipdb; ipdb.set_trace()
     raise NotImplementedError
 
 
 @encode.register(stl.LinEq)
-def _(psi, t:int, s, _):
-    x = s.x[psi.lit][t]
-    z_t = s.z[psi, t]
-
+def _(psi, s:dict):
+    z_t = s[psi]
+    x = sum(float(term.coeff)*s[(term.id, term.time)] for term in psi.terms)
     M = 1000  # TODO
     # TODO: come up w. better value for eps
     eps = 0.01 if psi.op == "=" else 0
@@ -99,38 +97,28 @@ def _(psi, t:int, s, _):
 
 
 @encode.register(stl.Neg)
-def _(phi, t:int, s, _):
-    yield s.z[phi, t] == 1 - s.z[phi.arg, t], K.NEG
+def _(phi, s:dict):
+    yield s[phi] == 1 - s[phi.arg], K.NEG
 
 
-def encode_bool_op(psi, t:int, s, g:Game, *, k:Kind, isor:bool):
-    elems = [s.z[psi2, t] for psi2 in psi.args]
-    yield from encode_op(s.z[psi, t], elems, s, psi, k=k, isor=isor)
-
-
-def encode_temp_op(psi, t:int, s, g:Game, *, k:Kind, isor:bool):
-    a, b = map(partial(step, dt=g.dt), psi.interval)
-    elems = [s.z[psi.arg, t + i] for i in range(a, b + 1) if t + i <= g.N]
-
-    yield from encode_op(s.z[psi, t], elems, s, psi, k=k, isor=isor)
-
-
-def encode_op(z_psi, elems, s, phi, *, k:Kind, isor:bool):
+def encode_op(phi:"STL", s:dict, *, k:Kind, isor:bool):
+    z_phi = s[phi]
+    elems = [s[psi] for psi in phi.args]
     rel, const = (op.ge, 0) if isor else (op.le, 1 - len(elems))
 
     for e in elems:
-        yield rel(z_psi, e), k[0]
-    yield rel(const + sum(elems), z_psi), k[1]
+        yield rel(z_phi, e), k[0]
+    yield rel(const + sum(elems), z_phi), k[1]
 
 
-encode.register(stl.Or)(partial(encode_bool_op, k=(K.OR, K.OR_TOTAL), isor=True))
-encode.register(stl.And)(partial(encode_bool_op, k=(K.AND, K.AND_TOTAL), isor=False))
-encode.register(stl.F)(partial(encode_temp_op, k=(K.F, K.F_TOTAL), isor=True))
-encode.register(stl.G)(partial(encode_temp_op, k=(K.G, K.G_TOTAL), isor=False))
+encode.register(stl.Or)(partial(encode_op, k=(K.OR, K.OR_TOTAL), isor=True))
+encode.register(stl.And)(partial(encode_op, k=(K.AND, K.AND_TOTAL), isor=False))
 
 
-def encode_and_run(params, *, x=None, u=None, w=None):
-    model, constr_map = encode(params, x=x, u=u, w=w)
+def encode_and_run(phi, *, assigned=None):
+    if assigned is None:
+        assigned = {}
+    model, _ = sl_to_milp(phi, assigned=assigned)
     status = lp.LpStatus[model.solve(lp.solvers.COIN())]
 
     if status in ('Infeasible', 'Unbounded'):

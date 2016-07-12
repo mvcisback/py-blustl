@@ -6,7 +6,6 @@ TODO: Include meta information in Game
 - Annotate stl with changeability
 TODO: add test to make sure phi is hashable after transformation
 TODO: create map from SL expr to matching Temporal Logic term after conversion
-TODO: reimplement set_time w.o. term lens
 """
 
 from itertools import product, chain, starmap, repeat
@@ -43,7 +42,7 @@ def negative_time_filter(lineq):
     return None if any(t < 0 for t in times) else lineq
 
 
-filter_none = lambda x: [y for y in x if y is not None]
+filter_none = lambda x: tuple(y for y in x if y is not None)
 
 def game_to_sl(g:Game) -> "SL":
     phi = game_to_stl(g)  
@@ -57,6 +56,7 @@ def game_to_sl(g:Game) -> "SL":
 
     # Type cast time to int (and forget about sympy stuff)
     psi = focus.bind(psi).terms.each_().time.modify(int)
+    psi = focus.bind(psi).terms.each_().coeff.modify(float)
 
     # Drop terms from time < 0
     psi = focus.bind(psi).modify(negative_time_filter)
