@@ -25,7 +25,7 @@ import stl
 
 Specs = namedtuple("Specs", "sys env init dyn")
 Game = namedtuple("Game", "phi model meta")
-Model = namedtuple("Model", "dt N vars")
+Model = namedtuple("Model", "dt N vars bounds")
 Vars = namedtuple("Vars", "state input env")
 Meta = namedtuple("Meta", "pri names") # TODO populate
 
@@ -62,7 +62,6 @@ def game_to_sl(g:Game) -> "SL":
     # Drop terms from time < 0
     psi = focus.bind(psi).modify(negative_time_filter)
     return stl.and_or_lens(psi).args.modify(filter_none)
-    
     
 
 def step(t:float, dt:float) -> int:
@@ -114,6 +113,17 @@ def _stl_to_sl(phi, *, curr_len, discretize):
     return phi
 
 
+def set_time(*, t, dt=stl.dt_sym, tl=None):
+    if tl is None:
+        tl = stl.terms_lens(phi)
+    focus = tl.tuple_(lens().time, lens().coeff).each_()
+    return focus.call("subs", {stl.t_sym: t, stl.dt_sym: dt})
+
+
+def vars_in_phi(phi):
+    focus = stl.terms_lens(phi)
+    return set(focus.tuple_(lens().id, lens().time).get_all())
+
 
 def from_yaml(content:str) -> Game:
     g = defaultdict(list, yaml.load(content))
@@ -133,22 +143,14 @@ def from_yaml(content:str) -> Game:
     phi = Specs(**spec_map)
     meta = Meta(pri_map, name_map)
 
-    # Parse Vars and Model
-    stl_var_map = fn.merge({'input': [], 'state': [], 'env': []}, g['vars'])
+    # Parse Model
+    stl_var_map = fn.merge(
+        {'input': [], 'state': [], 'env': []}, 
+        g['model']['vars']
+    )
     dt = int(g['model']['dt'])
     steps = int(ceil(int(g['model']['time_horizon']) / dt))
-    model = Model(dt=dt, N=steps, vars=Vars(**stl_var_map))
+    bounds = g['model']['bounds']
+    model = Model(dt=dt, N=steps, vars=Vars(**stl_var_map), bounds=bounds)
 
     return Game(phi=phi,  model=model, meta=meta)
-
-
-def set_time(*, t, dt=stl.dt_sym, tl=None):
-    if tl is None:
-        tl = stl.terms_lens(phi)
-    focus = tl.tuple_(lens().time, lens().coeff).each_()
-    return focus.call("subs", {stl.t_sym: t, stl.dt_sym: dt})
-
-
-def vars_in_phi(phi):
-    focus = stl.terms_lens(phi)
-    return set(focus.tuple_(lens().id, lens().time).get_all())

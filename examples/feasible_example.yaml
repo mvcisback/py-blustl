@@ -1,11 +1,19 @@
+# Model
 model:
   time_horizon: 10
   dt: 1
 
-vars:
-  state: [x y]
-  input: [u]
+  vars:
+    state: [x y]
+    input: [u]
 
+  bounds:
+    x: (0, 1)
+    y: (0, 1)
+    u: (0, 1)
+
+# Specification
+    
 init:
   - stl: x = 0
   - stl: y = 1

@@ -7,6 +7,7 @@
 # TODO: weight IIS slacks based priority
 # TODO: Look into using SMT
 # TODO: Add constraint that x < M
+# TODO: incorporate bounds
 
 from __future__ import division
 
