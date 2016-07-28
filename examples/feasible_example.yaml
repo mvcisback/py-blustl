@@ -1,14 +1,20 @@
-num_vars: 1
-num_sys_inputs: 1
-num_env_inputs: 0
-time_horizon: 4
-dt: 1
+model:
+  time_horizon: 10
+  dt: 1
+
+vars:
+  state: [x y]
+  input: [u]
 
 init:
-- 'x0 = 0'
+  - stl: x = 0
+  - stl: y = 1
 
 sys:
-- 'F[0,2](x0 > 5)'
+  - name: FooBar
+    stl: "F[0,2](x > 5)"
+    pri: 1
 
 dyn:
-- "G[0, 4](-1*xInput' + dt*1*x0' + 5*u0 = 0)"
+  - stl: G[0, 4](-1*u' + dt*1*x' + 5*u = 0)
+  - stl: G[0, 4](-1*u' + dt*1*y' + u = 0)

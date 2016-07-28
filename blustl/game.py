@@ -1,5 +1,6 @@
 """
 TODO: Game to pdf
+TODO: Create script to automatically generate game spec
 TODO: Include meta information in Game
 - Annotate stl with priority 
 - Annotate stl with name
@@ -10,7 +11,7 @@ TODO: create map from SL expr to matching Temporal Logic term after conversion
 
 from itertools import product, chain, starmap, repeat
 from functools import partial
-from collections import namedtuple
+from collections import namedtuple, defaultdict
 import operator as op
 from math import floor, ceil
 
@@ -22,17 +23,17 @@ from lenses import lens
 import sympy
 import stl
 
-Phi = namedtuple("Phi", "sys env init")
-Dynamics = namedtuple("Dynamics", "eq n_vars n_sys n_env")
-Game = namedtuple("Game", "phi dyn ti meta")
-TimeInfo = namedtuple("TimeInfo", "dt N t_f")
-Meta = namedtuple("Meta", []) # TODO populate
+Specs = namedtuple("Specs", "sys env init dyn")
+Game = namedtuple("Game", "phi model meta")
+Model = namedtuple("Model", "dt N vars")
+Vars = namedtuple("Vars", "state input env")
+Meta = namedtuple("Meta", "pri names") # TODO populate
 
 def game_to_stl(g:Game) -> "STL":
     # TODO: support symbolic matricies
     sys, env = stl.And(g.phi.sys), stl.And(g.phi.env),
     phi = [stl.Or((sys, stl.Neg(env))) if g.phi.env else sys]
-    dyn = list(g.dyn.eq)
+    dyn = list(g.phi.dyn)
     init = list(g.phi.init)
     return stl.And(tuple(phi + init + dyn))
 
@@ -48,11 +49,11 @@ def game_to_sl(g:Game) -> "SL":
     phi = game_to_stl(g)  
 
     # Erase Modal Ops
-    psi = stl_to_sl(phi, discretize=partial(discretize, ti=g.ti))
+    psi = stl_to_sl(phi, discretize=partial(discretize, m=g.model))
 
     # Set time
     focus = stl.lineq_lens(psi, bind=False)
-    psi = set_time(t=0, dt=g.ti.dt, tl=focus.bind(psi).terms.each_())
+    psi = set_time(t=0, dt=g.model.dt, tl=focus.bind(psi).terms.each_())
 
     # Type cast time to int (and forget about sympy stuff)
     psi = focus.bind(psi).terms.each_().time.modify(int)
@@ -68,8 +69,8 @@ def step(t:float, dt:float) -> int:
     return int(t / dt)
 
 
-def discretize(interval:stl.Interval, ti:TimeInfo):
-    f = lambda x: min(step(x, dt=ti.dt), ti.N)
+def discretize(interval:stl.Interval, m:Model):
+    f = lambda x: min(step(x, dt=m.dt), m.N)
     t_0, t_f = interval
     return range(f(t_0), f(t_f) + 1)
 
@@ -113,21 +114,32 @@ def _stl_to_sl(phi, *, curr_len, discretize):
     return phi
 
 
+
 def from_yaml(content:str) -> Game:
-    g = yaml.load(content)
-    sys = tuple(stl.parse(x) for x in g.get('sys', []))
-    env = tuple(stl.parse(x) for x in g.get('env', []))
-    init = tuple(stl.parse(x) for x in g.get('init', []))
-    phi = Phi(sys, env, init)
+    g = defaultdict(list, yaml.load(content))
 
-    eq = tuple(stl.parse(x) for x in g.get('dyn', []))
-    dyn = Dynamics(eq, g['num_vars'], g['num_sys_inputs'], g['num_env_inputs'])
+    # Parse Specs and Meta
+    spec_types = ["sys", "env", "init", "dyn"]
+    spec_map = {k: [] for k in spec_types}
+    pri_map = {}
+    name_map = {}
+    for kind in spec_types:
+        for spec in g[kind]:
+            p = stl.parse(spec['stl'])
+            name_map[p] = spec.get('name')
+            pri_map[p] = spec.get('pri')
+            spec_map[kind].append(p)
+    spec_map = fn.walk_values(tuple, spec_map)
+    phi = Specs(**spec_map)
+    meta = Meta(pri_map, name_map)
 
-    dt = int(g['dt'])
-    tf = g['time_horizon']
-    steps = int(ceil(int(tf) / dt))
-    ti = TimeInfo(dt=dt, t_f=tf, N=steps)
-    return Game(phi=phi, dyn=dyn, ti=ti, meta=Meta())
+    # Parse Vars and Model
+    stl_var_map = fn.merge({'input': [], 'state': [], 'env': []}, g['vars'])
+    dt = int(g['model']['dt'])
+    steps = int(ceil(int(g['model']['time_horizon']) / dt))
+    model = Model(dt=dt, N=steps, vars=Vars(**stl_var_map))
+
+    return Game(phi=phi,  model=model, meta=meta)
 
 
 def set_time(*, t, dt=stl.dt_sym, tl=None):

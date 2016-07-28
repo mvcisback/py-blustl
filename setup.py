@@ -11,7 +11,6 @@ setup(name='blustl',
           'funcy',
           'parsimonious', 
           'PyYAML',
-          'numpy',
           'lenses'
       ],
       packages=find_packages(),
