@@ -1,8 +1,10 @@
 # -*- coding: utf-8 -*-
-from blustl.stl_parser import parse_stl, from_yaml
-from blustl import stl
+import stl
+from blustl.game import from_yaml
 from nose2.tools import params
 import unittest
+from sympy import Symbol
+
 from glob import glob
 
 def main():
@@ -10,7 +12,7 @@ def main():
         print(from_yaml(f))
 
 ex1 = ('x1 > 2', stl.LinEq(
-    [stl.Term(False, 1, stl.Var(stl.VarKind.x, 1))],
+    (stl.Var(1, Symbol("x1"), stl.ast.t_sym),),
     ">",
     2.0
 ))
@@ -26,10 +28,7 @@ example_ymls = glob('examples/*')
 class TestSTLParser(unittest.TestCase):
     @params(ex1, ex2, ex3, ex4)
     def test_stl(self, phi_str, phi):
-        self.assertEqual(parse_stl(phi_str), phi)
+        self.assertEqual(stl.parse(phi_str), phi)
     
-    @params(*example_ymls)
-    def test_from_yaml_smoketest(self, yml_path):
-        with open(yml_path) as f:
-            from_yaml(f)
+
 
