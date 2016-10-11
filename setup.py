@@ -13,6 +13,8 @@ setup(name='blustl',
           'PyYAML',
           'lenses',
           'sympy',
+          'numpy',
+          'pandas',
       ],
       packages=find_packages(),
 )
