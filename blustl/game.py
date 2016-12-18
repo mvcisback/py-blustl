@@ -13,14 +13,13 @@ from itertools import product, chain, starmap, repeat
 from functools import partial
 from collections import namedtuple, defaultdict
 import operator as op
-from math import floor, ceil
+from math import ceil
 
 import yaml
 import funcy as fn
 from funcy import pluck, group_by, drop, walk_values, compose
 from lenses import lens
 
-import sympy
 import stl
 
 Specs = namedtuple("Specs", "sys env init dyn")

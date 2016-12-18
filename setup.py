@@ -15,6 +15,7 @@ setup(name='blustl',
           'sympy',
           'numpy',
           'pandas',
+          'py-blustl'
       ],
       packages=find_packages(),
 )
