@@ -47,13 +47,14 @@ def fixed_input_constraint(iden:str):
 
 def input_constaints(g:Game) -> "STL":
     inputs = fn.chain(g.model.vars.input, g.model.vars.env)
-    return list(map(fixed_input_constraint, inputs))
+    return stl.And(tuple(map(fixed_input_constraint, inputs)))
 
 
 def mpc_game_to_stl(g:Game) -> "STL":
-    phi = stl.And(tuple([one_off_game_to_stl(g)] + input_constaints(g)))
+    horizon = stl.Interval(0, g.model.N*g.model.dt)
     prev_horizon = stl.Interval(0, (g.model.N-1)*g.model.dt)
-    return stl.G(prev_horizon, phi)
+    return stl.And((stl.G(prev_horizon, input_constaints(g)), 
+                    stl.G(horizon, phi)))
 
 def negative_time_filter(lineq):
     times = lens(lineq).terms.each_().time.get_all()
@@ -64,7 +65,7 @@ filter_none = lambda x: tuple(y for y in x if y is not None)
 
 
 def discretize_decorator(f):
-    @wraps(f)
+    @fn.wraps(f)
     def wrapper(g:Game):
         return discretize_stl(f(g), g)
     return wrapper
