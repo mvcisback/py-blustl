@@ -18,24 +18,42 @@ from math import ceil
 import yaml
 import funcy as fn
 from funcy import pluck, group_by, drop, walk_values, compose
+import sympy as sym
 from lenses import lens
 
 import stl
 
 Specs = namedtuple("Specs", "sys env init dyn")
-Game = namedtuple("Game", "phi model meta")
+Game = namedtuple("Game", "spec model meta")
 Model = namedtuple("Model", "dt N vars bounds")
 Vars = namedtuple("Vars", "state input env")
 Meta = namedtuple("Meta", "pri names") # TODO populate
 
-def game_to_stl(g:Game) -> "STL":
+
+def one_off_game_to_stl(g:Game) -> "STL":
     # TODO: support symbolic matricies
-    sys, env = stl.And(g.phi.sys), stl.And(g.phi.env),
-    phi = [stl.Or((sys, stl.Neg(env))) if g.phi.env else sys]
-    dyn = list(g.phi.dyn)
-    init = list(g.phi.init)
+    sys, env = stl.And(g.spec.sys), stl.And(g.spec.env),
+    phi = [stl.Or((sys, stl.Neg(env))) if g.spec.env else sys]
+    dyn = list(g.spec.dyn)
+    init = list(g.spec.init)
     return stl.And(tuple(phi + init + dyn))
 
+
+def fixed_input_constraint(iden:str):
+    terms = (stl.Var(1, i, stl.t_sym),)
+    const = sym.Symbol(i + "_star")(stl.t_sym)
+    return stl.LinEq(terms, "=", const)
+
+
+def input_constaints(g:Game) -> "STL":
+    inputs = fn.chain(g.model.vars.input, g.model.vars.env)
+    return list(map(fixed_input_constraint, inputs))
+
+
+def mpc_game_to_stl(g:Game) -> "STL":
+    phi = stl.And(tuple([one_off_game_to_stl(g)] + input_constaints(g)))
+    prev_horizon = stl.Interval(0, (g.model.N-1)*g.model.dt)
+    return stl.G(prev_horizon, phi)
 
 def negative_time_filter(lineq):
     times = lens(lineq).terms.each_().time.get_all()
@@ -44,7 +62,15 @@ def negative_time_filter(lineq):
 
 filter_none = lambda x: tuple(y for y in x if y is not None)
 
-def game_to_sl(g:Game) -> "SL":
+
+def discretize_decorator(f):
+    @wraps(f)
+    def wrapper(g:Game):
+        return discretize_stl(f(g), g)
+    return wrapper
+
+
+def discretize_stl(phi:"STL", g:Game) -> "SL":
     phi = game_to_stl(g)  
 
     # Erase Modal Ops
@@ -139,7 +165,7 @@ def from_yaml(content:str) -> Game:
             pri_map[p] = spec.get('pri')
             spec_map[kind].append(p)
     spec_map = fn.walk_values(tuple, spec_map)
-    phi = Specs(**spec_map)
+    spec = Specs(**spec_map)
     meta = Meta(pri_map, name_map)
 
     # Parse Model
@@ -152,4 +178,8 @@ def from_yaml(content:str) -> Game:
     bounds = g['model']['bounds']
     model = Model(dt=dt, N=steps, vars=Vars(**stl_var_map), bounds=bounds)
 
-    return Game(phi=phi,  model=model, meta=meta)
+    return Game(spec=spec,  model=model, meta=meta)
+
+
+mpc_game_to_sl = discretize_decorator(mpc_game_to_stl)
+one_off_game_to_sl = discretize_decorator(one_off_game_to_stl)
