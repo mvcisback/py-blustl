@@ -23,6 +23,8 @@ from lenses import lens
 
 import stl
 
+import blustl.simplify_mtl
+
 Specs = namedtuple("Specs", "sys env init dyn")
 Game = namedtuple("Game", "spec model meta")
 Model = namedtuple("Model", "dt N vars bounds")
@@ -50,11 +52,17 @@ def input_constaints(g:Game) -> "STL":
     return stl.And(tuple(map(fixed_input_constraint, inputs)))
 
 
-def mpc_game_to_stl(g:Game) -> "STL":
+def mpc_game_to_stl(g:Game, *, simplify=True) -> "STL":
     horizon = stl.Interval(0, g.model.N*g.model.dt)
     prev_horizon = stl.Interval(0, (g.model.N-1)*g.model.dt)
-    return stl.And((stl.G(prev_horizon, input_constaints(g)), 
-                    stl.G(horizon, phi)))
+    phi = one_off_game_to_stl(g)
+    mpc_phi = stl.And((stl.G(prev_horizon, input_constaints(g)), 
+                       stl.G(horizon, phi)))
+    if not simplify:
+        return mpc_phi
+
+    return blustl.simplify_mtl(mpc_phi)
+
 
 def negative_time_filter(lineq):
     times = lens(lineq).terms.each_().time.get_all()
@@ -66,8 +74,8 @@ filter_none = lambda x: tuple(y for y in x if y is not None)
 
 def discretize_decorator(f):
     @fn.wraps(f)
-    def wrapper(g:Game):
-        return discretize_stl(f(g), g)
+    def wrapper(g:Game, **kwargs):
+        return discretize_stl(f(g, **kwargs), g)
     return wrapper
 
 

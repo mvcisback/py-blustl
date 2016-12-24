@@ -31,7 +31,7 @@ DEFAULT_NAME = 'controller_synth'
 
 Result = namedtuple("Result", ["feasible", "model", "cost", "solution"])
 
-def z(x:"STL", i:int):
+def z(x:"SL", i:int):
     # TODO: come up with better function name
     cat = C.Bool if isinstance(x, stl.LinEq) else C.Real
     if isinstance(x, stl.LinEq):
@@ -101,7 +101,7 @@ def _(phi, s:dict):
     yield s[phi] == 1 - s[phi.arg], K.NEG
 
 
-def encode_op(phi:"STL", s:dict, *, k:Kind, isor:bool):
+def encode_op(phi:"SL", s:dict, *, k:Kind, isor:bool):
     z_phi = s[phi]
     elems = [s[psi] for psi in phi.args]
     rel, const = (op.ge, 0) if isor else (op.le, 1 - len(elems))
