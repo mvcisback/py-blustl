@@ -15,7 +15,7 @@ def encode(phi:"MTL"):
     return pyeda.inter.expr(phi_str)
 
 def encode_and_simpify(phi:"MTL"):
-    return pyeda.inter.espresso_exprs(encode(phi))[0]
+    return pyeda.inter.espresso_exprs(encode(phi).to_dnf())[0]
 
 def decode(simplified_expr, ap_map) -> "STL":
     mtl = _decode(simplified_expr)

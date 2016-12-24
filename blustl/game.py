@@ -12,8 +12,10 @@ TODO: create map from SL expr to matching Temporal Logic term after conversion
 from itertools import product, chain, starmap, repeat
 from functools import partial
 from collections import namedtuple, defaultdict
-import operator as op
 from math import ceil
+import operator as op
+import pathlib
+
 
 import yaml
 import funcy as fn
@@ -42,8 +44,8 @@ def one_off_game_to_stl(g:Game) -> "STL":
 
 
 def fixed_input_constraint(iden:str):
-    terms = (stl.Var(1, i, stl.t_sym),)
-    const = sym.Symbol(i + "_star")(stl.t_sym)
+    terms = (stl.Var(1, iden, stl.t_sym),)
+    const = sym.Symbol(iden + "_star")(stl.t_sym)
     return stl.LinEq(terms, "=", const)
 
 
@@ -52,16 +54,12 @@ def input_constaints(g:Game) -> "STL":
     return stl.And(tuple(map(fixed_input_constraint, inputs)))
 
 
-def mpc_game_to_stl(g:Game, *, simplify=True) -> "STL":
+def mpc_game_to_stl(g:Game) -> "STL":
     horizon = stl.Interval(0, g.model.N*g.model.dt)
     prev_horizon = stl.Interval(0, (g.model.N-1)*g.model.dt)
     phi = one_off_game_to_stl(g)
-    mpc_phi = stl.And((stl.G(prev_horizon, input_constaints(g)), 
-                       stl.G(horizon, phi)))
-    if not simplify:
-        return mpc_phi
-
-    return blustl.simplify_mtl(mpc_phi)
+    return stl.And((stl.G(prev_horizon, input_constaints(g)), 
+                    stl.G(horizon, phi)))
 
 
 def negative_time_filter(lineq):
@@ -75,16 +73,14 @@ filter_none = lambda x: tuple(y for y in x if y is not None)
 def discretize_decorator(f):
     @fn.wraps(f)
     def wrapper(g:Game, **kwargs):
-        return discretize_stl(f(g, **kwargs), g)
+        phi = discretize_stl(f(g, **kwargs), g)
+        return blustl.simplify_mtl.simplify(phi)
     return wrapper
 
 
 def discretize_stl(phi:"STL", g:Game) -> "SL":
-    phi = game_to_stl(g)  
-
     # Erase Modal Ops
     psi = stl_to_sl(phi, discretize=partial(discretize, m=g.model))
-
     # Set time
     focus = stl.lineq_lens(psi, bind=False)
     psi = set_time(t=0, dt=g.model.dt, tl=focus.bind(psi).terms.each_())
@@ -151,7 +147,13 @@ def set_time(*, t, dt=stl.dt_sym, tl=None):
     if tl is None:
         tl = stl.terms_lens(phi)
     focus = tl.tuple_(lens().time, lens().coeff).each_()
-    return focus.call("subs", {stl.t_sym: t, stl.dt_sym: dt})
+
+    def _set_time(x):
+        if hasattr(x, "subs"):
+            return x.subs({stl.t_sym: t, stl.dt_sym: dt})
+        return x
+
+    return focus.modify(_set_time)
 
 
 def vars_in_phi(phi):
@@ -159,8 +161,12 @@ def vars_in_phi(phi):
     return set(focus.tuple_(lens().id, lens().time).get_all())
 
 
-def from_yaml(content:str) -> Game:
-    g = defaultdict(list, yaml.load(content))
+def from_yaml(path) -> Game:
+    if isinstance(path, (str, pathlib.Path)):
+        with pathlib.Path(path).open("r") as f:
+            g = defaultdict(list, yaml.load(f))
+    else:
+        g = defaultdict(list, yaml.load(f))
 
     # Parse Specs and Meta
     spec_types = ["sys", "env", "init", "dyn"]
