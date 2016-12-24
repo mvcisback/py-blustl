@@ -9,13 +9,10 @@ setup(name='blustl',
       license='MIT',
       install_requires=[
           'funcy',
-          'parsimonious', 
           'PyYAML',
           'lenses',
-          'sympy',
-          'numpy',
-          'pandas',
-          'py-stl'
+          'py-stl',
+          'pulp',
       ],
       packages=find_packages(),
 )
