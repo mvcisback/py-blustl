@@ -54,12 +54,31 @@ def input_constaints(g:Game) -> "STL":
     return stl.And(tuple(map(fixed_input_constraint, inputs)))
 
 
-def mpc_game_to_stl(g:Game) -> "STL":
-    horizon = stl.Interval(0, g.model.N*g.model.dt)
-    prev_horizon = stl.Interval(0, (g.model.N-1)*g.model.dt)
-    phi = one_off_game_to_stl(g)
-    return stl.And((stl.G(prev_horizon, input_constaints(g)), 
-                    stl.G(horizon, phi)))
+def mpc_games_stl_generator(g:Game) -> "STL":
+    psi = one_off_game_to_stl(g)
+    yield psi
+
+    H2 = sym.Dummy("H_2")
+    horizon = stl.Interval(0, H2)
+    mpc_psi_template = stl.G(horizon, stl.And((input_constaints(g), psi)))
+    param_lens = stl.utils.param_lens(mpc_psi_template)
+    
+    for n in range(1, g.model.N):
+        psi = stl.utils.set_params(param_lens, {H2:n*g.model.dt})
+        yield psi
+
+    while True:
+        yield psi
+
+
+def mpc_games_sl_generator(g:Game) -> "STL":
+    for _, phi in zip(range(g.model.N), mpc_games_stl_generator(g)):
+        psi = discretize_stl(phi, g)
+        yield psi
+
+    while True:
+        yield psi
+
 
 
 def negative_time_filter(lineq):
@@ -69,13 +88,6 @@ def negative_time_filter(lineq):
 
 filter_none = lambda x: tuple(y for y in x if y is not None)
 
-
-def discretize_decorator(f):
-    @fn.wraps(f)
-    def wrapper(g:Game, **kwargs):
-        phi = discretize_stl(f(g, **kwargs), g)
-        return blustl.simplify_mtl.simplify(phi)
-    return wrapper
 
 
 def discretize_stl(phi:"STL", g:Game) -> "SL":
@@ -194,7 +206,3 @@ def from_yaml(path) -> Game:
     model = Model(dt=dt, N=steps, vars=Vars(**stl_var_map), bounds=bounds)
 
     return Game(spec=spec,  model=model, meta=meta)
-
-
-mpc_game_to_sl = discretize_decorator(mpc_game_to_stl)
-one_off_game_to_sl = discretize_decorator(one_off_game_to_stl)

@@ -41,7 +41,12 @@ See examples/feasible_example.yaml
 ```python
 import blustl
 
-g = blustl.from_yaml("examples/feasible_example.yaml") # Game Object
-phi = blustl.mpc_game_to_sl(g) # Time discretized STL
-res = blustl.encode_and_run(phi) # MPC Result
+# Load game scenario
+g = blustl.from_yaml("examples/feasible_example.yaml")
+
+# Create generator receding horizon specs
+specs = blustl.mpc_games_sl_generator(g)
+
+# Pass first spec to MILP oracle and print solution
+print(blustl.encode_and_run(next(specs)))
 ```
