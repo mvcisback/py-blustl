@@ -53,7 +53,8 @@ print(blustl.encode_and_run(next(spec)))
 
 # Non-Adversarial MPC Usage example
 
-```python import blustl
+```python
+import blustl
 
 # Load game scenario g =
 blustl.from_yaml("examples/feasible_example.yaml")
