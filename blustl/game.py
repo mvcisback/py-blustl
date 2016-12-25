@@ -43,6 +43,10 @@ def one_off_game_to_stl(g:Game) -> "STL":
     return stl.And(tuple(phi + init + dyn))
 
 
+def one_off_game_to_sl(g:Game) -> "STL":
+    return discretize_stl(one_off_game_to_stl, g)
+
+
 def fixed_input_constraint(iden:str):
     terms = (stl.Var(1, iden, stl.t_sym),)
     const = sym.Symbol(iden + "_star")(stl.t_sym)

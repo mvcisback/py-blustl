@@ -36,7 +36,7 @@ dyn: # Dynamics, given in slight extension of stl.
 
 See examples/feasible_example.yaml
 
-# Usage example
+# Non-Adversarial one off game
 
 ```python
 import blustl
@@ -44,9 +44,33 @@ import blustl
 # Load game scenario
 g = blustl.from_yaml("examples/feasible_example.yaml")
 
-# Create generator receding horizon specs
-specs = blustl.mpc_games_sl_generator(g)
+# Create spec for game
+spec = blustl.one_off_game_to_sl(g)
+
+# Pass spec to MILP oracle and print solution
+print(blustl.encode_and_run(next(spec)))
+```
+
+# Non-Adversarial MPC Usage example
+
+```python import blustl
+
+# Load game scenario g =
+blustl.from_yaml("examples/feasible_example.yaml")
+
+# Create
+
+# Create generator receding horizon specs specs =
+blustl.mpc_games_sl_generator(g)
 
 # Pass first spec to MILP oracle and print solution
 print(blustl.encode_and_run(next(specs)))
+
+# Coming soon, automatically update previous inputs
+# Will likely be a coroutine ontop of mpc_games_sl_generator
+# After update, rerun blustl.encode_and_run
 ```
+
+# Adversarial MPC Usage example
+
+Coming Soon
