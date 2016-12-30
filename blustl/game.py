@@ -57,15 +57,12 @@ def input_constaints(g:Game) -> "STL":
     inputs = fn.chain(g.model.vars.input, g.model.vars.env)
     return stl.And(tuple(map(fixed_input_constraint, inputs)))
 
-
 def mpc_games_stl_generator(g:Game) -> "STL":
     psi = one_off_game_to_stl(g)
     yield psi
 
     H2 = sym.Dummy("H_2")
-    horizon = stl.Interval(0, H2)
-    mpc_psi_template = stl.G(horizon, stl.And((input_constaints(g), psi)))
-    param_lens = stl.utils.param_lens(mpc_psi_template)
+    param_lens = stl.utils.param_lens(stl.G(stl.Interval(0, H2), psi))
     
     for n in range(1, g.model.N):
         psi = stl.utils.set_params(param_lens, {H2:n*g.model.dt})
@@ -76,13 +73,8 @@ def mpc_games_stl_generator(g:Game) -> "STL":
 
 
 def mpc_games_sl_generator(g:Game) -> "STL":
-    for _, phi in zip(range(g.model.N), mpc_games_stl_generator(g)):
-        psi = discretize_stl(phi, g)
-        yield psi
-
-    while True:
-        yield psi
-
+    for phi, prev in fn.with_prev(mpc_games_stl_generator(g)):
+        yield prev if prev == phi else discretize_stl(phi, g)
 
 
 def negative_time_filter(lineq):
