@@ -13,7 +13,7 @@ def queue_to_stl(g:Game, q):
 def mpc_game(g:Game):
     """Co-routine:
       - Yields: MPC STL
-      - Recieves: Measurement STL
+      - Recieves: Set of LinEqs (called measurements)
 
     TODO: Incorporate Lipshitz bound to bound measurements
     """
