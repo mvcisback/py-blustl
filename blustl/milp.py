@@ -128,6 +128,8 @@ def encode_and_run(phi, *, assigned=None):
         f = lambda x: x[0][0]
         f2 = lambda x: (tuple(map(int, x[0][1:].split('_'))), x[1])
         f3 = compose(tuple, sorted, partial(map, f2))
+        # TODO:
+        # - Change to list of 2*Horizon state/input/env variable sets
         solution = group_by(f, [(x.name, x.value()) for x in model.variables()])
         solution = walk_values(f3, solution)
         cost = model.objective.value()

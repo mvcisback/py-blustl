@@ -1,0 +1,2 @@
+def cegis():
+    raise NotImplementedError
