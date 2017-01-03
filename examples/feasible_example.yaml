@@ -1,22 +1,21 @@
 # Model
 model:
-  time_horizon: 10
+  time_horizon: 3
   dt: 1
 
   vars:
-    state: [x y]
+    state: [x]
     input: [u]
 
   bounds:
     x: (0, 1)
-    y: (0, 1)
     u: (0, 1)
 
 # Specification
     
 init:
   - stl: x = 0
-  - stl: y = 1
+
 
 sys:
   - name: FooBar
@@ -24,5 +23,4 @@ sys:
     pri: 1
 
 dyn:
-  - stl: G[0, 4](-1*u' + dt*1*x' + 5*u = 0)
-  - stl: G[0, 4](-1*u' + dt*1*y' + u = 0)
+  - stl: G[0, 4](-1*x + x' + dt*5*u = 0)

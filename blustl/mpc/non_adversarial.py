@@ -2,16 +2,18 @@ from collections import deque
 
 import stl
 
-from blustl.game import mpc_games_sl_generator, Game
+from blustl.game import mpc_games_sl_generator, Game, discretize_stl
 from blustl.milp import encode_and_run
 
-def queue_to_stl(g:Game, q):
+def queue_to_sl(g:Game, q):
     """Takes measurements and writes appropriate STL.
     Currently assumes piecewise interpolation of measurements.
     TODO: Incorporate Lipshitz bound to bound measurements
     """
-    return [stl.G(stl.Interval(t, t+g.model.dt), phi) for t, phi in
-            enumerate(q)]
+    def measure_lemma(phis, t):
+        psi = stl.G(stl.Interval(t, t+g.model.dt), stl.And(tuple(phis)))
+        return discretize_stl(psi, g)
+    return [measure_lemma(phis, t) for t, phis in enumerate(q)]
 
 
 def specs(g:Game):
@@ -23,7 +25,7 @@ def specs(g:Game):
     """
     q = deque([], maxlen=g.model.N)
     for phi in mpc_games_sl_generator(g):
-        measurements = yield stl.And(tuple([phi] + queue_to_stl(g, q)))
+        measurements = yield stl.And(tuple([phi] + queue_to_sl(g, q)))
         q.append(measurements)
 
 

@@ -44,7 +44,7 @@ def one_off_game_to_stl(g:Game) -> "STL":
 
 
 def one_off_game_to_sl(g:Game) -> "STL":
-    return discretize_stl(one_off_game_to_stl, g)
+    return discretize_stl(one_off_game_to_stl(g), g)
 
 
 def fixed_input_constraint(iden:str):

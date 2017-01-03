@@ -80,7 +80,7 @@ def sl_to_milp(phi:"SL", assigned=None, p1=True):
 
 @singledispatch
 def encode(psi, s):
-    raise NotImplementedError
+    raise NotImplementedError(psi)
 
 
 @encode.register(stl.LinEq)
@@ -133,8 +133,10 @@ def encode_and_run(phi, *, assigned=None):
         
         solution = filter(None, map(variables.get, model.variables()))
         solution = fn.group_by(op.itemgetter(0), solution)
-        solution = {t: set((y[1], y[2].value()) for y in x) for t, x in solution.items()}
+        solution = {t: set(stl.LinEq((stl.Var(1, y[1], t),), "=",
+                    y[2].value()) for y in x) for t, x in
+                    solution.items()}
         cost = model.objective.value()
         return Result(True, model, cost, solution)
     else:
-        raise NotImplementedError
+        raise NotImplementedError(status)
