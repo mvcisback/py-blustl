@@ -75,7 +75,7 @@ def sl_to_milp(phi:"SL", assigned=None, p1=True):
     # TODO: support alternative objective functions
     model.setObjective(store[phi])
     
-    return model, constraint_map
+    return model, constraint_map, store
 
 
 @singledispatch
@@ -118,7 +118,7 @@ encode.register(stl.And)(partial(encode_op, k=(K.AND, K.AND_TOTAL), isor=False))
 def encode_and_run(phi, *, assigned=None):
     if assigned is None:
         assigned = {}
-    model, _ = sl_to_milp(phi, assigned=assigned)
+    model, _, store = sl_to_milp(phi, assigned=assigned)
     status = lp.LpStatus[model.solve(lp.solvers.COIN())]
 
     if status in ('Infeasible', 'Unbounded'):
@@ -128,10 +128,12 @@ def encode_and_run(phi, *, assigned=None):
         f = lambda x: x[0][0]
         f2 = lambda x: (tuple(map(int, x[0][1:].split('_'))), x[1])
         f3 = compose(tuple, sorted, partial(map, f2))
-        # TODO:
-        # - Change to list of 2*Horizon state/input/env variable sets
-        solution = group_by(f, [(x.name, x.value()) for x in model.variables()])
-        solution = walk_values(f3, solution)
+        variables = {v: (k[1], k[0], v) for k, v in store.items() 
+                     if not isinstance(k[0], tuple)}
+        
+        solution = filter(None, map(variables.get, model.variables()))
+        solution = fn.group_by(op.itemgetter(0), solution)
+        solution = {t: set((y[1], y[2].value()) for y in x) for t, x in solution.items()}
         cost = model.objective.value()
         return Result(True, model, cost, solution)
     else:

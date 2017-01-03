@@ -14,7 +14,7 @@ def queue_to_stl(g:Game, q):
             enumerate(q)]
 
 
-def non_adversarial_mpc_specs(g:Game):
+def specs(g:Game):
     """Co-routine:
       - Yields: MPC STL
       - Recieves: Set of LinEqs (called measurements)
@@ -27,5 +27,5 @@ def non_adversarial_mpc_specs(g:Game):
         q.append(measurements)
 
 
-def non_adversarial_predict(phi, _):
+def predict(phi, _):
     return encode_and_run(phi)
