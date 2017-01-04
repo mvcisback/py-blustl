@@ -24,6 +24,7 @@ import sympy as sym
 from lenses import lens
 
 import stl
+from stl import STL
 
 import blustl.simplify_mtl
 
@@ -34,30 +35,20 @@ Vars = namedtuple("Vars", "state input env")
 Meta = namedtuple("Meta", "pri names") # TODO populate
 
 
-def one_off_game_to_stl(g:Game) -> "STL":
+def one_off_game_to_stl(g:Game) -> STL:
     # TODO: support symbolic matricies
-    sys, env = stl.And(g.spec.sys), stl.And(g.spec.env),
-    phi = [stl.Or((sys, stl.Neg(env))) if g.spec.env else sys]
-    dyn = list(g.spec.dyn)
-    init = list(g.spec.init)
-    return stl.And(tuple(phi + init + dyn))
+    sys, env = stl.andf(*g.spec.sys), stl.andf(*g.spec.env)
+    phi = (sys | ~env) if g.spec.env else sys
+    dyn = stl.andf(*g.spec.dyn)
+    init = stl.andf(*g.spec.init)
+    return phi & init & dyn
 
 
-def one_off_game_to_sl(g:Game) -> "STL":
+def one_off_game_to_sl(g:Game) -> STL:
     return discretize_stl(one_off_game_to_stl(g), g)
 
 
-def fixed_input_constraint(iden:str):
-    terms = (stl.Var(1, iden, stl.t_sym),)
-    const = sym.Symbol(iden + "_star")(stl.t_sym)
-    return stl.LinEq(terms, "=", const)
-
-
-def input_constaints(g:Game) -> "STL":
-    inputs = fn.chain(g.model.vars.input, g.model.vars.env)
-    return stl.And(tuple(map(fixed_input_constraint, inputs)))
-
-def mpc_games_stl_generator(g:Game) -> "STL":
+def mpc_games_stl_generator(g:Game) -> STL:
     psi = one_off_game_to_stl(g)
     yield psi
 
@@ -72,7 +63,7 @@ def mpc_games_stl_generator(g:Game) -> "STL":
         yield psi
 
 
-def mpc_games_sl_generator(g:Game) -> "STL":
+def mpc_games_sl_generator(g:Game) -> STL:
     for phi, prev in fn.with_prev(mpc_games_stl_generator(g)):
         yield prev if prev == phi else discretize_stl(phi, g)
 
@@ -86,7 +77,7 @@ filter_none = lambda x: tuple(y for y in x if y is not None)
 
 
 
-def discretize_stl(phi:"STL", g:Game) -> "SL":
+def discretize_stl(phi:STL, g:Game) -> "SL":
     # Erase Modal Ops
     psi = stl_to_sl(phi, discretize=partial(discretize, m=g.model))
     # Set time
@@ -112,7 +103,7 @@ def discretize(interval:stl.Interval, m:Model):
     return range(f(t_0), f(t_f) + 1)
 
 
-def stl_to_sl(phi:"STL", discretize) -> "SL":
+def stl_to_sl(phi:STL, discretize) -> "SL":
     """Returns STL formula with temporal operators erased"""
     return _stl_to_sl([phi], curr_len=lens()[0], discretize=discretize)[0]
     
@@ -129,15 +120,14 @@ def _stl_to_sl(phi, *, curr_len, discretize):
 
     # Erase Time
     if isinstance(psi, stl.ModalOp):
-        Op = stl.And if isinstance(psi, stl.G) else stl.Or
+        binop = stl.And if isinstance(psi, stl.G) else stl.Or
 
         # Discrete time
         times = discretize(psi.interval)
 
         # Compute terms lens
         terms = stl.terms_lens(psi.arg)
-
-        psi = Op(tuple(terms.time + i for i in times))
+        psi = binop(tuple(terms.time + i for i in times))
         phi = curr_len.set(psi, state=phi)
 
     # Recurse and update Phi

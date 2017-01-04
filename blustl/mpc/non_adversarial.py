@@ -11,9 +11,9 @@ def queue_to_sl(g:Game, q):
     TODO: Incorporate Lipshitz bound to bound measurements
     """
     def measure_lemma(phis, t):
-        psi = stl.G(stl.Interval(t, t+g.model.dt), stl.And(tuple(phis)))
+        psi = stl.G(stl.Interval(t, t+g.model.dt), stl.andf(*phis))
         return discretize_stl(psi, g)
-    return [measure_lemma(phis, t) for t, phis in enumerate(q)]
+    return stl.andf(*[measure_lemma(phis, t) for t, phis in enumerate(q)])
 
 
 def specs(g:Game):
@@ -25,7 +25,7 @@ def specs(g:Game):
     """
     q = deque([], maxlen=g.model.N)
     for phi in mpc_games_sl_generator(g):
-        measurements = yield stl.And(tuple([phi] + queue_to_sl(g, q)))
+        measurements = yield phi & queue_to_sl(g, q)
         q.append(measurements)
 
 

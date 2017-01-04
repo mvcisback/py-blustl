@@ -13,6 +13,7 @@ setup(name='blustl',
           'lenses',
           'py-stl',
           'pulp',
+          'pyeda',
       ],
       packages=find_packages(),
 )
