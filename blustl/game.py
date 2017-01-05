@@ -188,7 +188,8 @@ def from_yaml(path) -> Game:
     )
     dt = int(g['model']['dt'])
     steps = int(ceil(int(g['model']['time_horizon']) / dt))
-    bounds = g['model']['bounds']
+    bounds = {k: v.split(",") for k,v in g["model"]["bounds"].items()}
+    bounds = {k: (float(v[0][1:]), float(v[1][:-1])) for k,v in bounds.items()}
     model = Model(dt=dt, N=steps, vars=Vars(**stl_var_map), bounds=bounds)
 
     return Game(spec=spec,  model=model, meta=meta)
