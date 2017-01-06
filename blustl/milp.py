@@ -139,7 +139,7 @@ def encode_and_run(phi, g, *, assigned=None):
         
         solution = filter(None, map(variables.get, model.variables()))
         solution = fn.group_by(op.itemgetter(0), solution)
-        solution = {t: set(stl.LinEq((stl.Var(1, y[1], t),), "=",
+        solution = {t: set(stl.LinEq((stl.Var(1, y[1], stl.t_sym),), "=",
                     y[2].value()) for y in x) for t, x in
                     solution.items()}
         cost = model.objective.value()

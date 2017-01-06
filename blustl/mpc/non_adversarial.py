@@ -16,30 +16,29 @@ def queue_to_sl(g:Game, q):
         # Currently a hack since we don't support open intervals
         psi = stl.G(stl.Interval(t, t+g.model.dt/2), stl.andf(*phis))
         return discretize_stl(psi, g)
-    return stl.andf(*[measure_lemma(phis, t) for t, phis in enumerate(q)])
 
+    # TODO: Set time based on position in queue
+    return stl.andf(*[measure_lemma(phis, t) for t, phis in
+                      enumerate(q) if len(phis) != 0])
 
-def updated(meas, q):
-    state = {x.terms[0].id: x for x in q[-1]}
-    state.update({x.terms[0].id: x for x in meas})
-    return set(state.values())
-    
 
 def specs(g:Game):
     """Co-routine:
-      - Yields: MPC STL
+      - Yields: MPC SL
       - Recieves: Set of LinEqs (called measurements)
 
     TODO: Incorporate Lipshitz bound to bound measurements
     """
     init = set((set_time(t=0, phi=phi) for phi in g.spec.init))
-    q = deque([init], maxlen=g.model.N)
-    for phi in mpc_games_sl_generator(g):
-        meas = yield phi & queue_to_sl(g, q)
-        q[-1] = updated(meas, q)
-        predicts = meas - q[-1]
-        if predicts:
-            q.append(predicts)
+    spec_gen = mpc_games_sl_generator(g)
+    phi = next(spec_gen)
+    yield queue_to_sl(g, [init]) & phi
+
+    q = deque([], maxlen=g.model.N)
+    for phi in spec_gen:
+        t, predicts, meas = yield queue_to_sl(g, q) & phi
+        q.append(predicts)
+        # TODO: incorporate meas
 
 
 def predict(phi, g):

@@ -9,13 +9,13 @@ def mpc(g:Game):
     phi = next(mpc_specs)
     external_meas = set()
     predict = non_adversarial.predict if len(g.model.vars.env) == 0 else cegis
-    H = 2*g.model.N
+    H = 2*g.model.N - 1
     for t in chain(range(H), repeat(H)):
         prediction = predict(phi, g)
         if not prediction.feasible:
             return prediction
         predicted_meas = prediction.solution.get(t, set())
-        phi = mpc_specs.send(predicted_meas |external_meas)
+        phi = mpc_specs.send((t, predicted_meas, external_meas))
         external_meas = yield predicted_meas, phi
         if external_meas is None:
             external_meas = set()
