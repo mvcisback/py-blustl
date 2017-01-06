@@ -35,13 +35,16 @@ Vars = namedtuple("Vars", "state input env")
 Meta = namedtuple("Meta", "pri names") # TODO populate
 
 
-def one_off_game_to_stl(g:Game) -> STL:
+def one_off_game_to_stl(g:Game, *, with_init=True) -> STL:
     # TODO: support symbolic matricies
     sys, env = stl.andf(*g.spec.sys), stl.andf(*g.spec.env)
     phi = (sys | ~env) if g.spec.env else sys
     dyn = stl.andf(*g.spec.dyn)
-    init = stl.andf(*g.spec.init)
-    return phi & init & dyn
+    spec = phi & dyn
+    if with_init:
+        return spec & stl.andf(*g.spec.init)
+    else:
+        return spec
 
 
 def one_off_game_to_sl(g:Game) -> STL:
@@ -49,9 +52,8 @@ def one_off_game_to_sl(g:Game) -> STL:
 
 
 def mpc_games_stl_generator(g:Game) -> STL:
-    psi = one_off_game_to_stl(g)
+    psi = one_off_game_to_stl(g, with_init=False)
     yield psi
-
     H2 = sym.Dummy("H_2")
     param_lens = stl.utils.param_lens(stl.G(stl.Interval(0, H2), psi))
     
@@ -65,7 +67,8 @@ def mpc_games_stl_generator(g:Game) -> STL:
 
 def mpc_games_sl_generator(g:Game) -> STL:
     for phi, prev in fn.with_prev(mpc_games_stl_generator(g)):
-        yield prev if prev == phi else discretize_stl(phi, g)
+        psi = discretize_stl(phi, g)
+        yield psi if prev == phi else discretize_stl(phi, g)
 
 
 def negative_time_filter(lineq):
@@ -141,7 +144,7 @@ def _stl_to_sl(phi, *, curr_len, discretize):
     return phi
 
 
-def set_time(*, t, dt=stl.dt_sym, tl=None):
+def set_time(*, t, dt=stl.dt_sym, tl=None, phi=None):
     if tl is None:
         tl = stl.terms_lens(phi)
     focus = tl.tuple_(lens().time, lens().coeff).each_()

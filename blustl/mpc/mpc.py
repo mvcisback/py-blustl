@@ -15,7 +15,7 @@ def mpc(g:Game):
         if not prediction.feasible:
             return prediction
         predicted_meas = prediction.solution.get(t, set())
-        phi = mpc_specs.send(predicted_meas | external_meas)
-        external_meas = yield predicted_meas
+        phi = mpc_specs.send(predicted_meas |external_meas)
+        external_meas = yield predicted_meas, phi
         if external_meas is None:
             external_meas = set()
