@@ -1,6 +1,6 @@
 # Model
 model:
-  time_horizon: 3
+  time_horizon: 4
   dt: 1
 
   vars:
@@ -8,7 +8,7 @@ model:
     input: [u]
 
   bounds:
-    x: (0, 1)
+    x: (0, 100)
     u: (0, 1)
 
 # Specification

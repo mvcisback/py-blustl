@@ -31,17 +31,19 @@ DEFAULT_NAME = 'controller_synth'
 
 Result = namedtuple("Result", ["feasible", "model", "cost", "solution"])
 
-def z(x:"SL", i:int):
+def z(x:"SL", i:int, g:Game):
     # TODO: come up with better function name
     cat = C.Bool if isinstance(x, stl.LinEq) else C.Real
     if isinstance(x, stl.LinEq):
         prefix = "q"
-    elif isinstance(x, stl.Var):
-        prefix = "var"
     else:
         prefix = "z"
-    name = "{}{}".format(prefix, i)
-    return lp.LpVariable(cat=cat.value, name=name)
+    kwargs = {"name": "{}{}".format(prefix, i)}
+    if str(x[0]) in g.model.bounds:
+        lo, hi = g.model.bounds.get(str(x[0]))
+        kwargs = {"lowBound": lo, "upBound": hi, "name": f"{x[0]}_{x[1]}"}
+    return lp.LpVariable(cat=cat.value, **kwargs)
+    
 
 
 def add_constr(model, constr, kind:K, i:int):
@@ -49,7 +51,7 @@ def add_constr(model, constr, kind:K, i:int):
     model.addConstraint(constr, name=name)
 
 
-def sl_to_milp(phi:"SL", assigned=None, p1=True):
+def sl_to_milp(phi:"SL", g:Game, assigned=None, p1=True):
     """STL -> MILP"""
     # TODO: port to new Signal Logic based API
     # TODO: constraint_map
@@ -60,8 +62,9 @@ def sl_to_milp(phi:"SL", assigned=None, p1=True):
     constraint_map = {}
     model = lp.LpProblem(DEFAULT_NAME, lp.LpMaximize)
     lp_vars = set(game.vars_in_phi(phi))
+
     nodes = set(stl.walk(phi))
-    store = {x: z(x, i) for i, x in enumerate(nodes | lp_vars)}
+    store = {x: z(x, i, g) for i, x in enumerate(nodes | lp_vars)}
 
     stl_constr = cat(encode(phi, store) for phi in nodes)
     constraints = chain(
@@ -85,11 +88,14 @@ def encode(psi, s):
 
 @encode.register(stl.LinEq)
 def _(psi, s:dict):
-    z_t = s[psi]
     x = sum(float(term.coeff)*s[(term.id, term.time)] for term in psi.terms)
+    if psi.op == "=":
+        yield x == psi.const, K.PRED_EQ
+    z_t = s[psi]
+
     M = 1000  # TODO
     # TODO: come up w. better value for eps
-    eps = 0.01 if psi.op == "=" else 0
+    eps = 0.01
 
     mu = x - psi.const if psi.op in ("<", "<=", "=") else psi.const -x
     yield -mu <= M * z_t - eps, K.PRED_UPPER
@@ -115,10 +121,10 @@ encode.register(stl.Or)(partial(encode_op, k=(K.OR, K.OR_TOTAL), isor=True))
 encode.register(stl.And)(partial(encode_op, k=(K.AND, K.AND_TOTAL), isor=False))
 
 
-def encode_and_run(phi, *, assigned=None):
+def encode_and_run(phi, g, *, assigned=None):
     if assigned is None:
         assigned = {}
-    model, _, store = sl_to_milp(phi, assigned=assigned)
+    model, _, store = sl_to_milp(phi, g, assigned=assigned)
     status = lp.LpStatus[model.solve(lp.solvers.COIN())]
 
     if status in ('Infeasible', 'Unbounded'):

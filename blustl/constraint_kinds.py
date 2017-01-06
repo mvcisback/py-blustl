@@ -24,6 +24,7 @@ Kind = Enum(
         "ASSERT_FEASIBLE",
         "PRED_UPPER",
         "PRED_LOWER",
+        "PRED_EQ",
         "NEG",
         "OR",
         "OR_TOTAL",
