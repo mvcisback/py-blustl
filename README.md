@@ -56,20 +56,15 @@ print(blustl.encode_and_run(spec))
 ```python
 import blustl
 
-# Load game scenario g =
-blustl.from_yaml("examples/feasible_example.yaml")
+# Load game scenario
+g = blustl.from_yaml("examples/feasible_example.yaml")
 
-# Create
+# Create generator receding horizon mpc
 
-# Create generator receding horizon specs specs =
-blustl.mpc_games_sl_generator(g)
-
-# Pass first spec to MILP oracle and print solution
-print(blustl.encode_and_run(next(specs)))
-
-# Coming soon, automatically update previous inputs
-# Will likely be a coroutine ontop of mpc_games_sl_generator
-# After update, rerun blustl.encode_and_run
+controller = blustl.mpc(g)
+print(next(controller)[0]) # prints state
+print(next(controller)) # prints state, spec
+print(controller.send(measurements)) # send measurements and print state, spec
 ```
 
 # Adversarial MPC Usage example

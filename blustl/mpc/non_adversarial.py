@@ -1,3 +1,4 @@
+# TODO: incorporate external measurements
 from collections import deque
 
 import funcy as fn
