@@ -1,0 +1,31 @@
+# Model
+model:
+  time_horizon: 10
+  dt: 1
+
+  vars:
+    state: [x_con x_adv]
+    input: [u]
+    env: [w]
+
+  bounds:
+    x_con: (-10, 10)
+    x_adv: (-10, 10)
+    u: (0.99, 1.01)
+
+# Specification
+    
+init:
+  - stl: x_con = -5
+  - stl: x_adv = -5
+
+sys:
+  - name: ConstantEnv
+    stl: "G[0,10](w == 1)"
+  - name: NonAdv_AvoidCollision 
+    stl: "G[0,10](not((x_con > -2) and (x_con < 2) and (x_adv > -2) and (x_adv < 2)))"
+    pri: 1
+
+dyn:
+  - stl: G[0, 10](-1*x_con + x_con' + dt*u = 0)
+  - stl: G[0, 10](-1*x_adv + x_adv' + dt*w = 0)
