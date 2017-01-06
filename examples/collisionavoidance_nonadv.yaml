@@ -20,8 +20,9 @@ init:
   - stl: x_adv = -5
 
 sys:
-  - name: NonAdv_AvoidCollision
+  - name: ConstantEnv
     stl: "G[0,10](w == 1)"
+  - name: NonAdv_AvoidCollision 
     stl: "G[0,10](not((x_con > -2) and (x_con < 2) and (x_adv > -2) and (x_adv < 2)))"
     pri: 1
 
