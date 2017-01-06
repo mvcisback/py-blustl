@@ -91,15 +91,16 @@ def _(psi, s:dict):
     x = sum(float(term.coeff)*s[(term.id, term.time)] for term in psi.terms)
     if psi.op == "=":
         yield x == psi.const, K.PRED_EQ
-    z_t = s[psi]
+    else:
+        z_t = s[psi]
 
-    M = 1000  # TODO
-    # TODO: come up w. better value for eps
-    eps = 0.01
+        M = 1000  # TODO
+        # TODO: come up w. better value for eps
+        eps = 0.01
 
-    mu = x - psi.const if psi.op in ("<", "<=", "=") else psi.const -x
-    yield -mu <= M * z_t - eps, K.PRED_UPPER
-    yield mu <= M * (1 - z_t) - eps, K.PRED_LOWER
+        mu = x - psi.const if psi.op in ("<", "<=", "=") else psi.const -x
+        yield -mu <= M * z_t - eps, K.PRED_UPPER
+        yield mu <= M * (1 - z_t) - eps, K.PRED_LOWER
 
 
 @encode.register(stl.Neg)

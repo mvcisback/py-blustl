@@ -1,6 +1,6 @@
 # Model
 model:
-  time_horizon: 4
+  time_horizon: 2
   dt: 1
 
   vars:
@@ -23,4 +23,4 @@ sys:
     pri: 1
 
 dyn:
-  - stl: G[0, 4](-1*x + x' + dt*5*u = 0)
+  - stl: G[0, 2](x + -1*x' + dt*5*u = 0)
