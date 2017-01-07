@@ -48,7 +48,7 @@ g = blustl.from_yaml("examples/feasible_example.yaml")
 spec = blustl.one_off_game_to_sl(g)
 
 # Pass spec to MILP oracle and print solution
-print(blustl.encode_and_run(spec))
+print(blustl.encode_and_run(spec, g))
 ```
 
 # Non-Adversarial MPC Usage example
