@@ -136,13 +136,11 @@ def encode_and_run(phi, g, *, assigned=None):
         f3 = compose(tuple, sorted, partial(map, f2))
         variables = {v: (k[1], k[0], v) for k, v in store.items() 
                      if not isinstance(k[0], tuple)}
-        
-        solution = filter(None, map(variables.get, model.variables()))
-        solution = fn.group_by(op.itemgetter(0), solution)
-        solution = {t: set(stl.LinEq((stl.Var(1, y[1], stl.t_sym),), "=",
-                    y[2].value()) for y in x) for t, x in
-                    solution.items()}
+
+        sol = filter(None, map(variables.get, model.variables()))
+        sol = fn.group_by(op.itemgetter(0), sol)
+        sol = {t: {y[1]: y[2].value() for y in x} for t, x in sol.items()}
         cost = model.objective.value()
-        return Result(True, model, cost, solution)
+        return Result(True, model, cost, sol)
     else:
         raise NotImplementedError(status)

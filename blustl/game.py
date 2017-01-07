@@ -189,6 +189,11 @@ def from_yaml(path) -> Game:
         {'input': [], 'state': [], 'env': []}, 
         g['model']['vars']
     )
+    stl_var_map['input'] = list(map(sym.Symbol, stl_var_map['input']))
+    stl_var_map['state'] = list(map(sym.Symbol, stl_var_map['state']))
+    stl_var_map['env'] = list(map(sym.Symbol, stl_var_map['env']))
+    
+
     dt = int(g['model']['dt'])
     steps = int(ceil(int(g['model']['time_horizon']) / dt))
     bounds = {k: v.split(",") for k,v in g["model"]["bounds"].items()}
