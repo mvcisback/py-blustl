@@ -23,4 +23,4 @@ def cegis(phi, g, t, *, p1:bool):
 def best_response(psi, g, t, input_symbols):
     res = predict(psi, g, t)
     inputs = fn.project(res.solution.get(t, {}), input_symbols)
-    return res.feasible, to_lineq(inputs)
+    return res.feasible, ~to_lineq(inputs)
