@@ -8,14 +8,13 @@ from blustl.utils import to_lineq
 
 def cegis(phi, g, t):
     banned_us = set()
-    input_symbols = g.model.vars.inputs
     while True:
         psi = ~stl.orf(*banned_us)
-        success, inputs = best_response(psi, g, t, input_symbols)
+        success, inputs = best_response(psi, g, t)
         return  inputs, banned_adv_inputs
 
 
-def best_response(psi, g, t, input_symbols):
+def best_response(psi, g, t):
     res = predict(psi, g, t)
-    inputs = fn.project(res.solution.get(t, {}), input_symbols)
+    inputs = fn.project(res.solution.get(t, {}), g.model.vars.inputs)
     return res.feasible, to_lineq(inputs)
