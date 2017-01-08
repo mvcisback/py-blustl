@@ -53,12 +53,7 @@ def add_constr(model, constr, kind:K, i:int):
 def sl_to_milp(phi:"SL", g:Game, assigned=None, p1=True):
     """STL -> MILP"""
     # TODO: port to new Signal Logic based API
-    # TODO: constraint_map
     # TODO: optimize away top level Ands
-    if assigned is None:
-        assigned = {}
-
-    constraint_map = {}
     model = lp.LpProblem(DEFAULT_NAME, lp.LpMaximize)
     lp_vars = set(game.vars_in_phi(phi))
 
@@ -77,7 +72,7 @@ def sl_to_milp(phi:"SL", g:Game, assigned=None, p1=True):
     # TODO: support alternative objective functions
     model.setObjective(store[phi])
     
-    return model, constraint_map, store
+    return model, store
 
 
 @singledispatch
@@ -121,10 +116,8 @@ encode.register(stl.Or)(partial(encode_op, k=(K.OR, K.OR_TOTAL), isor=True))
 encode.register(stl.And)(partial(encode_op, k=(K.AND, K.AND_TOTAL), isor=False))
 
 
-def encode_and_run(phi, g, *, assigned=None):
-    if assigned is None:
-        assigned = {}
-    model, _, store = sl_to_milp(phi, g, assigned=assigned)
+def encode_and_run(phi, g):
+    model, store = sl_to_milp(phi, g)
     status = lp.LpStatus[model.solve(lp.solvers.COIN())]
 
     if status in ('Infeasible', 'Unbounded'):
