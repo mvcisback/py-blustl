@@ -135,6 +135,5 @@ def encode_and_run(phi, g):
         cost = model.objective.value()
         return Result(True, model, cost, sol)
     else:
-        with open('error.milp', 'w') as f:
-            f.write(str(model))
+        return Result(False, model, 0, {})
         raise NotImplementedError(status)
