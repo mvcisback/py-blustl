@@ -11,10 +11,23 @@ import stl
 from blustl import game
 from blustl.utils import Result
 
-def sl_to_smt(phi:"SL"):
+def _bounds(phi, g):
+    vars_ = [stl.Var(1, s, t) for s, t in game.vars_in_phi(phi)]
+    for i, op in enumerate((">=", "<=")):
+        to_lineq = lambda v: stl.LinEq((v,), op, g.model.bounds[str(v.id)][i])
+        yield from map(to_lineq, vars_)
+
+
+def bounds(phi, g):
+    return stl.andf(*_bounds(phi, g))
+
+
+def sl_to_smt(phi:"SL", g):
     store = {(s, t): Symbol(f"{s}[{t}]", REAL) for s, t in game.vars_in_phi(phi)}
-    return encode(phi, store), store
-    
+    psi = bounds(phi, g) & phi
+    return encode(psi, store), store
+
+
 GET_OP = {
     "=": lambda x, y: (x <= y) & (x >= y),
     ">=": op.ge,
@@ -55,7 +68,7 @@ def _(psi, s:dict):
 
 def encode_and_run(phi, g):
     # TODO: add bounds
-    f, store = sl_to_smt(phi)
+    f, store = sl_to_smt(phi, g)
     model = get_model(f)
     if model is None:
         return Result(False, None, None, None)
