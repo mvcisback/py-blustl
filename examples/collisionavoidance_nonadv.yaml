@@ -10,7 +10,7 @@ model:
   bounds:
     xcon: (-10, 10)
     xadv: (-10, 10)
-    u: (0.99, 1.01)
+    u: (0, 1.0)
     w: (1,1)
 
 # Specification
@@ -22,7 +22,7 @@ init:
 
 sys:
   - name: Collision
-    stl: "F[0,3](((xcon > -2) and (xcon < 2)) and (xadv > -2))"
+    stl: "G[0,3](~((xcon > -2) and (xcon <= 2) and (xadv > -2) and (xadv <= 2)))"
     pri: 1
 
 dyn:
