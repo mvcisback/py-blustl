@@ -13,7 +13,7 @@ from __future__ import division
 from itertools import product, chain, starmap
 import operator as op
 from math import ceil
-from collections import defaultdict, Counter, namedtuple
+from collections import defaultdict
 from functools import partial, singledispatch
 
 import pulp as lp
@@ -25,10 +25,10 @@ from blustl import game
 from blustl.game import Game
 from blustl.constraint_kinds import Kind as K, Kind
 from blustl.constraint_kinds import Category as C
+from blustl.utils import Result
 
 DEFAULT_NAME = 'controller_synth'
 
-Result = namedtuple("Result", ["feasible", "model", "cost", "solution"])
 
 def z(x:"SL", i:int, g:Game):
     # TODO: come up with better function name
