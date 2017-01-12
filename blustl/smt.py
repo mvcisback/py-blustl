@@ -4,7 +4,7 @@ from functools import singledispatch, reduce
 
 import funcy as fn
 from pysmt.shortcuts import Symbol, Equals, get_model
-from pysmt.typing import REAL
+from pysmt.typing import REAL, BooleanType
 
 import stl
 
@@ -49,8 +49,7 @@ def _(psi, s:dict):
 
 @encode.register(stl.AtomicPred)
 def _(psi, s:dict):
-    # TODO
-    pass
+    return Symbol(s[(psi.id, psi.time)], BooleanType)
 
 
 @encode.register(stl.And)
