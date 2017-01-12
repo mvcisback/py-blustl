@@ -9,6 +9,7 @@ from pysmt.typing import REAL
 import stl
 
 from blustl import game
+from blustl.utils import Result
 
 def sl_to_smt(phi:"SL"):
     store = {(s, t): Symbol(f"{s}[{t}]", REAL) for s, t in game.vars_in_phi(phi)}
