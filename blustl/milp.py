@@ -135,4 +135,4 @@ def encode_and_run(phi, g):
         cost = model.objective.value()
         return Result(True, model, cost, sol)
     else:
-        raise NotImplementedError(status)
+        raise NotImplementedError((model, status))
