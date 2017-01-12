@@ -1,5 +1,5 @@
 import operator as op
-from operator import itemgetter
+from operator import itemgetter as ig
 from functools import singledispatch, reduce
 
 import funcy as fn
@@ -15,7 +15,7 @@ def sl_to_smt(phi:"SL"):
     return encode(phi, store), store
     
 GET_OP = {
-    "=": op.eq,
+    "=": lambda x, y: (x <= y) & (x >= y),
     ">=": op.ge,
     "<=": op.le,
     ">": op.gt,
@@ -29,11 +29,14 @@ def encode(psi, s):
 
 @encode.register(stl.LinEq)
 def _(psi, s:dict):
-    if psi.op == "=":
-        # There's a bug here...need to fix
-        raise NotImplementedError
     x = sum(float(term.coeff)*(s[(term.id, term.time)]+0) for term in psi.terms)
     return GET_OP[psi.op](x, psi.const)
+
+
+@encode.register(stl.AtomicPred)
+def _(psi, s:dict):
+    # TODO
+    pass
 
 
 @encode.register(stl.And)
@@ -49,7 +52,8 @@ def _(psi, s:dict):
     return ~encode(psi.arg, s)
 
 
-def encode_and_run(phi):
+def encode_and_run(phi, g):
+    # TODO: add bounds
     f, store = sl_to_smt(phi)
     model = get_model(f)
     if model is None:
