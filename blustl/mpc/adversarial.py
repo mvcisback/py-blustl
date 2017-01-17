@@ -15,7 +15,7 @@ def cegis(phi, g, t, *, p1:bool):
     )
 
     for p1_turn, banned_inputs, banned_adv_inputs, spec, input_symbols in turns:
-        psi = ~stl.orf(*banned_inputs)
+        psi = phi & ~stl.orf(*banned_inputs)
         success, inputs = best_response(psi, g, t, input_symbols)
         
         if success:

@@ -3,7 +3,7 @@ from operator import itemgetter as ig
 from functools import singledispatch, reduce
 
 import funcy as fn
-from pysmt.shortcuts import Symbol, Equals, get_model
+from pysmt.shortcuts import Symbol, Equals, get_model, ForAll, Exists
 from pysmt.typing import REAL, BooleanType
 
 import stl
@@ -25,7 +25,14 @@ def bounds(phi, g):
 def sl_to_smt(phi:"SL", g):
     store = {(s, t): Symbol(f"{s}[{t}]", REAL) for s, t in game.vars_in_phi(phi)}
     psi = bounds(phi, g) & phi
-    return encode(psi, store), store
+    f = encode(psi, store)
+    if len(g.model.vars.env) > 0:
+        adv_vars = [smt_sym for (s, _), smt_sym in store.items() 
+                    if s in g.model.vars.env]
+        sys_vars = [smt_sym for (s, _), smt_sym in store.items() 
+                    if s in g.model.vars.inputs]
+        f = ForAll(adv_vars, Exists(sys_vars, f))
+    return f, store
 
 
 GET_OP = {
