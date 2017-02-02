@@ -4,31 +4,50 @@ from collections import namedtuple
 import funcy as fn
 
 from blustl.mpc.non_adversarial import predict
-from blustl.utils import to_lineq
+from blustl.utils import project_solution_stl
 
-def cegis(phi, g, t, *, p1:bool):
-    banned_ws, banned_us = set(), set()
+def cegis(phi, g, t):
+    """CEGIS for dominate strategy.
+    ∃u∀w . (x(u, w, t), u, w) ⊢ φ
+    """
+    # Create player for sys and env resp.
+    p1 = player(phi, g, t, g.model.vars.inputs, g.model.vars.env)
+    p2 = player(~phi, g, t, g.model.vars.env, g.model.vars.inputs)
 
-    turns = cycle(
-        [(True, banned_us, phi, g.model.vars.inputs),
-         (False, banned_ws, ~phi, g.model.vars.env)]
-    )
+    # Start Co-Routines
+    next(p1); next(p2)
 
-    for p1_turn, banned_inputs, banned_adv_inputs, spec, input_symbols in turns:
-        psi = phi & ~stl.orf(*banned_inputs)
-        success, inputs = best_response(psi, g, t, input_symbols)
-        
-        if success:
-            banned_adv_inputs.add(inputs)
-        elif not p1_turn:
-            # TODO: return Maybe inputs
-            raise Exception("No Solution Exists")
-        else:
-            # TODO: pass back learned lemmas that are relevant to next MPC loop
-            return inputs
+    # Take turns providing counter examples
+    response = set()
+    for p in cycle([p1, p2]):
+        # Tell p about previous response and get p's response.
+        response = p.send(response)
+
+        # p failed to respond, thus the game ends.
+        if not respond.feasible:
+            return None if p == p1 else response.solution
 
 
-def best_response(psi, g, t, input_symbols):
-    res = predict(psi, g, t)
-    inputs = fn.project(res.solution.get(t, {}), input_symbols)
-    return res.feasible, to_lineq(inputs)
+def player(phi, g, t, inputs, adv_inputs):
+    """Player co-routine. 
+    Receives counter example and then returns response. Remembers
+    previous inputs that the adv responded to and won't play them
+    again.
+    """
+    counter_example = yield
+
+    # We must be the first player. Give unconstrained response.
+    if not counter_example:
+        counter_example = yield predict(phi, g, t)
+
+    while True:
+        # They gave a response w, we cannot use previous solutions.
+        sol = counter_example.solution
+        prev_input = project_solution_stl(sol, inputs)
+        response = project_solution_stl(sol, adv_inputs)
+
+        # Step 1) prev input had counter strategy, so ban it.
+        phi &= ~prev_input
+
+        # Step 2) respond to w's response.
+        counter_example = yield predict(psi & response, g, t)
