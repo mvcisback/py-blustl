@@ -9,7 +9,7 @@ from blustl.mpc.non_adversarial import predict
 from blustl.utils import project_solution_stl
 
 def cegis(phi, g, t):
-    """CEGIS for dominate strategy.
+    """CEGIS for dominant/robust strategy.
     ∃u∀w . (x(u, w, t), u, w) ⊢ φ
     """
     # Create player for sys and env resp.
@@ -63,4 +63,3 @@ def player(phi, g, t, inputs, adv_inputs, is_sys=True):
 
         # Step 4) Yield response
         counter_example = yield prediction
-        
