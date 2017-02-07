@@ -3,6 +3,8 @@ from collections import namedtuple
 
 import funcy as fn
 
+from stl import orf
+
 from blustl.mpc.non_adversarial import predict
 from blustl.utils import project_solution_stl
 
@@ -12,7 +14,8 @@ def cegis(phi, g, t):
     """
     # Create player for sys and env resp.
     p1 = player(phi, g, t, g.model.vars.inputs, g.model.vars.env)
-    p2 = player(~phi, g, t, g.model.vars.env, g.model.vars.inputs)
+    p2 = player(~phi, g, t, g.model.vars.env, g.model.vars.inputs,
+                is_sys=False)
 
     # Start Co-Routines
     next(p1); next(p2)
@@ -28,7 +31,7 @@ def cegis(phi, g, t):
             return None if p == p1 else response.solution
 
 
-def player(phi, g, t, inputs, adv_inputs):
+def player(phi, g, t, inputs, adv_inputs, is_sys=True):
     """Player co-routine. 
     Receives counter example and then returns response. Remembers
     previous inputs that the adv responded to and won't play them
@@ -40,6 +43,7 @@ def player(phi, g, t, inputs, adv_inputs):
     if not counter_example:
         counter_example = yield predict(phi, g, t)
 
+    banned_inputs = {}
     while True:
         # They gave a response w, we cannot use previous solutions.
         sol = counter_example.solution
@@ -47,7 +51,16 @@ def player(phi, g, t, inputs, adv_inputs):
         response = project_solution_stl(sol, adv_inputs)
 
         # Step 1) prev input had counter strategy, so ban it.
-        phi &= ~prev_input
+        banned_inputs.add(prev_input)
+        psi &= ~orf(*banned_inputs)
 
         # Step 2) respond to w's response.
-        counter_example = yield predict(psi & response, g, t)
+        prediction = predict(psi & response, g, t)
+
+        # Step 3) If not the system, need to consider old inputs
+        if not counter_example.feasible and not is_sys:
+            prediction = predict(phi & response, g, t)
+
+        # Step 4) Yield response
+        counter_example = yield prediction
+        
