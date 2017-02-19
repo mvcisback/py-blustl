@@ -16,7 +16,6 @@ from math import ceil
 import operator as op
 import pathlib
 
-
 import yaml
 import funcy as fn
 from funcy import pluck, group_by, drop, walk_values, compose
@@ -32,10 +31,10 @@ Specs = namedtuple("Specs", "sys env init dyn")
 Game = namedtuple("Game", "spec model meta")
 Model = namedtuple("Model", "dt N vars bounds")
 Vars = namedtuple("Vars", "state input env")
-Meta = namedtuple("Meta", "pri names") # TODO populate
+Meta = namedtuple("Meta", "pri names")  # TODO populate
 
 
-def one_off_game_to_stl(g:Game, *, with_init=True) -> STL:
+def one_off_game_to_stl(g: Game, *, with_init=True) -> STL:
     # TODO: support symbolic matricies
     sys, env = stl.andf(*g.spec.sys), stl.andf(*g.spec.env)
     phi = (sys | ~env) if g.spec.env else sys
@@ -47,25 +46,25 @@ def one_off_game_to_stl(g:Game, *, with_init=True) -> STL:
         return spec
 
 
-def one_off_game_to_sl(g:Game) -> STL:
+def one_off_game_to_sl(g: Game) -> STL:
     return discretize_stl(one_off_game_to_stl(g), g)
 
 
-def mpc_games_stl_generator(g:Game) -> STL:
+def mpc_games_stl_generator(g: Game) -> STL:
     psi = one_off_game_to_stl(g, with_init=False)
     yield psi
     H2 = sym.Dummy("H_2")
     param_lens = stl.utils.param_lens(stl.G(stl.Interval(0, H2), psi))
-    
+
     for n in range(1, g.model.N):
-        psi = stl.utils.set_params(param_lens, {H2:n*g.model.dt})
+        psi = stl.utils.set_params(param_lens, {H2: n * g.model.dt})
         yield psi
 
     while True:
         yield psi
 
 
-def mpc_games_sl_generator(g:Game) -> STL:
+def mpc_games_sl_generator(g: Game) -> STL:
     for phi, prev in fn.with_prev(mpc_games_stl_generator(g)):
         psi = discretize_stl(phi, g)
         yield psi if prev == phi else discretize_stl(phi, g)
@@ -79,8 +78,7 @@ def negative_time_filter(lineq):
 filter_none = lambda x: tuple(y for y in x if y is not None)
 
 
-
-def discretize_stl(phi:STL, g:Game) -> "SL":
+def discretize_stl(phi: STL, g: Game) -> "SL":
     # Erase Modal Ops
     psi = stl_to_sl(phi, discretize=partial(discretize, m=g.model))
     # Set time
@@ -94,22 +92,22 @@ def discretize_stl(phi:STL, g:Game) -> "SL":
     # Drop terms from time < 0
     psi = focus.bind(psi).modify(negative_time_filter)
     return stl.and_or_lens(psi).args.modify(filter_none)
-    
 
-def step(t:float, dt:float) -> int:
+
+def step(t: float, dt: float) -> int:
     return int(t / dt)
 
 
-def discretize(interval:stl.Interval, m:Model):
+def discretize(interval: stl.Interval, m: Model):
     f = lambda x: min(step(x, dt=m.dt), m.N)
     t_0, t_f = interval
     return range(f(t_0), f(t_f) + 1)
 
 
-def stl_to_sl(phi:STL, discretize) -> "SL":
+def stl_to_sl(phi: STL, discretize) -> "SL":
     """Returns STL formula with temporal operators erased"""
     return _stl_to_sl([phi], curr_len=lens()[0], discretize=discretize)[0]
-    
+
 
 def _stl_to_sl(phi, *, curr_len, discretize):
     """Returns STL formula with temporal operators erased"""
@@ -185,19 +183,22 @@ def from_yaml(path) -> Game:
     meta = Meta(pri_map, name_map)
 
     # Parse Model
-    stl_var_map = fn.merge(
-        {'input': [], 'state': [], 'env': []}, 
-        g['model']['vars']
-    )
+    stl_var_map = fn.merge({
+        'input': [],
+        'state': [],
+        'env': []
+    }, g['model']['vars'])
     stl_var_map['input'] = list(map(sym.Symbol, stl_var_map['input']))
     stl_var_map['state'] = list(map(sym.Symbol, stl_var_map['state']))
     stl_var_map['env'] = list(map(sym.Symbol, stl_var_map['env']))
-    
 
     dt = float(g['model']['dt'])
     steps = int(ceil(int(g['model']['time_horizon']) / dt))
-    bounds = {k: v.split(",") for k,v in g["model"]["bounds"].items()}
-    bounds = {k: (float(v[0][1:]), float(v[1][:-1])) for k,v in bounds.items()}
+    bounds = {k: v.split(",") for k, v in g["model"]["bounds"].items()}
+    bounds = {
+        k: (float(v[0][1:]), float(v[1][:-1]))
+        for k, v in bounds.items()
+    }
     model = Model(dt=dt, N=steps, vars=Vars(**stl_var_map), bounds=bounds)
 
-    return Game(spec=spec,  model=model, meta=meta)
+    return Game(spec=spec, model=model, meta=meta)

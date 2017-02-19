@@ -4,18 +4,21 @@ import stl
 import pyeda.inter
 import pyeda.boolalg.expr as pyEdaExpr
 
-def simplify(phi:"STL") -> "STL":
+
+def simplify(phi: "STL") -> "STL":
     psi, ap_map = stl.utils.to_mtl(phi)
     simplified_expr = encode_and_simpify(psi)
     return decode(simplified_expr, ap_map)
-    
 
-def encode(phi:"MTL"):
+
+def encode(phi: "MTL"):
     phi_str = str(phi).replace("∨", "|").replace("∧", "&").replace("¬", "~")
     return pyeda.inter.expr(phi_str)
 
-def encode_and_simpify(phi:"MTL"):
+
+def encode_and_simpify(phi: "MTL"):
     return pyeda.inter.espresso_exprs(encode(phi).to_dnf())[0]
+
 
 def decode(simplified_expr, ap_map) -> "STL":
     mtl = _decode(simplified_expr)
@@ -25,6 +28,7 @@ def decode(simplified_expr, ap_map) -> "STL":
 @singledispatch
 def _decode(exp):
     raise NotImplementedError(str(type(exp)))
+
 
 @_decode.register(pyEdaExpr.Variable)
 @_decode.register(pyEdaExpr.Complement)
