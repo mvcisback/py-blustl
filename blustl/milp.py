@@ -90,10 +90,10 @@ def _(psi, s:dict):
 
         M = 1000  # TODO
         # TODO: come up w. better value for eps
-        compare = op.lt if psi.op in ("<", ">=") else op.le
-        mu = x - psi.const if psi.op in ("<", "<=") else psi.const -x
-        yield compare(-mu, M * z_t ), K.PRED_UPPER
-        yield compare(mu, M * (1 - z_t)) , K.PRED_LOWER
+        eps = 1e-5 if psi.op in (">=", "<=") else 0
+        mu = x - psi.const + eps if psi.op in ("<", "<=") else psi.const - x - eps
+        yield -mu <= M * z_t, K.PRED_UPPER
+        yield mu <= M * (1 - z_t) , K.PRED_LOWER
 
 
 @encode.register(stl.Neg)
