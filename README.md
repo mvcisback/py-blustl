@@ -1,5 +1,4 @@
-![](docs/blustl.jpg)
-![](docs/magnumstl.jpg)
+![](docs/magnum_vs_stl.jpg)
 
 # YAML Format
 ## Model
