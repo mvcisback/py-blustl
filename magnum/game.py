@@ -25,7 +25,7 @@ from lenses import lens
 import stl
 from stl import STL
 
-import blustl.simplify_mtl
+import magnum.simplify_mtl
 
 Specs = namedtuple("Specs", "sys env init dyn")
 Game = namedtuple("Game", "spec model meta")

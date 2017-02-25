@@ -5,11 +5,11 @@ from itertools import chain, repeat
 import funcy as fn
 import stl
 
-from blustl.game import mpc_games_sl_generator, Game, discretize_stl, set_time
-from blustl.game import Game
-from blustl.mpc import non_adversarial
-from blustl.mpc.adversarial import cegis
-from blustl.utils import to_lineq
+from magnum.game import mpc_games_sl_generator, Game, discretize_stl, set_time
+from magnum.game import Game
+from magnum.mpc import non_adversarial
+from magnum.mpc.adversarial import cegis
+from magnum.utils import to_lineq
 
 
 def queue_to_sl(g:Game, q):

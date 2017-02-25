@@ -5,8 +5,8 @@ import funcy as fn
 
 from stl import orf
 
-from blustl.mpc.non_adversarial import predict
-from blustl.utils import project_solution_stl
+from magnum.mpc.non_adversarial import predict
+from magnum.utils import project_solution_stl
 
 def cegis(phi, g, t):
     """CEGIS for dominant/robust strategy.

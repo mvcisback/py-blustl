@@ -1,9 +1,9 @@
 from setuptools import setup, find_packages
 
-setup(name='blustl',
+setup(name='magnumSTL',
       version='0.1',
       description='TODO',
-      url='http://github.com/mvcisback/py-blustl',
+      url='http://github.com/mvcisback/magnumSTL',
       author='Marcell Vazquez-Chanlatte',
       author_email='marcell.vc@eecs.berkeley.edu',
       license='MIT',

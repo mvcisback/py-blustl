@@ -21,11 +21,11 @@ import funcy as fn
 from funcy import cat, mapcat, pluck, group_by, drop, walk_values, compose
 
 import stl
-from blustl import game
-from blustl.game import Game
-from blustl.constraint_kinds import Kind as K, Kind
-from blustl.constraint_kinds import Category as C
-from blustl.utils import Result
+from magnum import game
+from magnum.game import Game
+from magnum.constraint_kinds import Kind as K, Kind
+from magnum.constraint_kinds import Category as C
+from magnum.utils import Result
 
 DEFAULT_NAME = 'controller_synth'
 

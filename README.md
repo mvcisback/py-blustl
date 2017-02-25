@@ -1,3 +1,6 @@
+![](docs/blustl.jpg)
+![](docs/magnumstl.jpg)
+
 # YAML Format
 ## Model
 ```
@@ -39,29 +42,29 @@ See examples/feasible_example.yaml
 # Non-Adversarial one off game
 
 ```python
-import blustl
+import magnum
 
 # Load game scenario
-g = blustl.from_yaml("examples/feasible_example.yaml")
+g = magnum.from_yaml("examples/feasible_example.yaml")
 
 # Create spec for game
-spec = blustl.one_off_game_to_sl(g)
+spec = magnum.one_off_game_to_sl(g)
 
 # Pass spec to MILP oracle and print solution
-print(blustl.encode_and_run(spec, g))
+print(magnum.encode_and_run(spec, g))
 ```
 
 # Non-Adversarial MPC Usage example
 
 ```python
-import blustl
+import magnum
 
 # Load game scenario
-g = blustl.from_yaml("examples/feasible_example.yaml")
+g = magnum.from_yaml("examples/feasible_example.yaml")
 
 # Create generator receding horizon mpc
 
-controller = blustl.mpc(g)
+controller = magnum.mpc(g)
 print(next(controller)[0]) # prints state
 print(next(controller)) # prints state, spec
 print(controller.send(measurements)) # send measurements and print state, spec
