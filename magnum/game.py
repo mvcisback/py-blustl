@@ -168,9 +168,12 @@ def from_yaml(path) -> Game:
     spec_map = {k: [] for k in spec_types}
     pri_map = {}
     name_map = {}
+    dt = float(g['model']['dt'])
+    steps = int(ceil(int(g['model']['time_horizon']) / dt))
+
     for kind in spec_types:
         for spec in g[kind]:
-            p = stl.parse(spec['stl'])
+            p = stl.parse(spec['stl'], H=steps)
             name_map[p] = spec.get('name')
             pri_map[p] = spec.get('pri')
             spec_map[kind].append(p)
@@ -188,8 +191,7 @@ def from_yaml(path) -> Game:
     stl_var_map['state'] = list(map(sym.Symbol, stl_var_map['state']))
     stl_var_map['env'] = list(map(sym.Symbol, stl_var_map['env']))
 
-    dt = float(g['model']['dt'])
-    steps = int(ceil(int(g['model']['time_horizon']) / dt))
+
     bounds = {k: v.split(",") for k, v in g["model"]["bounds"].items()}
     bounds = {
         k: (float(v[0][1:]), float(v[1][:-1]))

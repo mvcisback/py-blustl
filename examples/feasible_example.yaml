@@ -19,8 +19,8 @@ init:
 
 sys:
   - name: FooBar
-    stl: "F[0,2](x > 5)"
+    stl: "F(x > 5)"
     pri: 1
 
 dyn:
-  - stl: G[0, 2](x + -1*x' + dt*5*u = 0)
+  - stl: G(x + -1*x' + dt*5*u = 0)
