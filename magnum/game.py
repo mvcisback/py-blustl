@@ -155,10 +155,6 @@ def set_time(*, t, dt=stl.dt_sym, tl=None, phi=None):
     return focus.modify(_set_time)
 
 
-def vars_in_phi(phi):
-    focus = stl.terms_lens(phi)
-    return set(focus.tuple_(lens().id, lens().time).get_all())
-
 
 def from_yaml(path) -> Game:
     if isinstance(path, (str, pathlib.Path)):

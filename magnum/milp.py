@@ -55,7 +55,7 @@ def sl_to_milp(phi:"SL", g:Game, assigned=None, p1=True):
     # TODO: port to new Signal Logic based API
     # TODO: optimize away top level Ands
     model = lp.LpProblem(DEFAULT_NAME, lp.LpMaximize)
-    lp_vars = set(game.vars_in_phi(phi))
+    lp_vars = set(stl.utils.vars_in_phi(phi))
 
     nodes = set(stl.walk(phi))
     store = {x: z(x, i, g) for i, x in enumerate(nodes | lp_vars)}
