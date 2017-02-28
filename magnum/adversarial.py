@@ -1,11 +1,10 @@
 from itertools import cycle
 from collections import namedtuple
 
-import funcy as fn
-
+import stl
 from stl import orf
 
-from magnum.mpc.non_adversarial import predict
+from magnum.non_adversarial import predict
 from magnum.utils import project_solution_stl
 
 def cegis(phi, g, t):
@@ -13,8 +12,8 @@ def cegis(phi, g, t):
     ∃u∀w . (x(u, w, t), u, w) ⊢ φ
     """
     # Create player for sys and env resp.
-    p1 = player(phi, g, t, g.model.vars.inputs, g.model.vars.env)
-    p2 = player(~phi, g, t, g.model.vars.env, g.model.vars.inputs,
+    p1 = player(phi, g, t, g.model.vars.input, g.model.vars.env)
+    p2 = player(~phi, g, t, g.model.vars.env, g.model.vars.input,
                 is_sys=False)
 
     # Start Co-Routines
@@ -25,9 +24,9 @@ def cegis(phi, g, t):
     for p in cycle([p1, p2]):
         # Tell p about previous response and get p's response.
         response = p.send(response)
-
+        
         # p failed to respond, thus the game ends.
-        if not respond.feasible:
+        if not response.feasible:
             return None if p == p1 else response.solution
 
 
@@ -42,23 +41,28 @@ def player(phi, g, t, inputs, adv_inputs, is_sys=True):
     # We must be the first player. Give unconstrained response.
     if not counter_example:
         counter_example = yield predict(phi, g, t)
+    banned_inputs = set()
 
-    banned_inputs = {}
     while True:
         # They gave a response w, we cannot use previous solutions.
         sol = counter_example.solution
-        prev_input = project_solution_stl(sol, inputs)
-        response = project_solution_stl(sol, adv_inputs)
-
+        prev_input = project_solution_stl(sol, inputs, t)
+        response = project_solution_stl(sol, adv_inputs, t)
         # Step 1) prev input had counter strategy, so ban it.
-        banned_inputs.add(prev_input)
-        psi &= ~orf(*banned_inputs)
+        if prev_input is not stl.TOP:
+            banned_inputs.add(prev_input)
+        import ipdb; ipdb.set_trace()
 
         # Step 2) respond to w's response.
-        prediction = predict(psi & response, g, t)
+        psi = phi & response
+        if banned_inputs:
+            psi &= ~orf(*banned_inputs)
+    
+        prediction = predict(psi, g, t)
 
         # Step 3) If not the system, need to consider old inputs
-        if not counter_example.feasible and not is_sys:
+        # upon failure
+        if not prediction.feasible and not is_sys:
             prediction = predict(phi & response, g, t)
 
         # Step 4) Yield response

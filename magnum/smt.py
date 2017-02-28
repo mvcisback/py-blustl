@@ -8,11 +8,11 @@ from pysmt.typing import REAL, BooleanType
 
 import stl
 
-from blustl import game
-from blustl.utils import Result
+from magnum import game
+from magnum.utils import Result
 
 def _bounds(phi, g):
-    vars_ = [stl.Var(1, s, t) for s, t in game.vars_in_phi(phi)]
+    vars_ = [stl.Var(1, s, t) for s, t in stl.utils.vars_in_phi(phi)]
     for i, op in enumerate((">=", "<=")):
         to_lineq = lambda v: stl.LinEq((v,), op, g.model.bounds[str(v.id)][i])
         yield from map(to_lineq, vars_)
@@ -23,7 +23,7 @@ def bounds(phi, g):
 
 
 def sl_to_smt(phi:"SL", g):
-    store = {(s, t): Symbol(f"{s}[{t}]", REAL) for s, t in game.vars_in_phi(phi)}
+    store = {(s, t): Symbol(f"{s}[{t}]", REAL) for s, t in stl.utils.vars_in_phi(phi)}
     psi = bounds(phi, g) & phi
     f = encode(psi, store)
     if len(g.model.vars.env) > 0:

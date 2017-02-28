@@ -121,14 +121,14 @@ def _stl_to_sl(phi, *, curr_len, discretize):
 
     # Erase Time
     if isinstance(psi, stl.ModalOp):
-        binop = stl.And if isinstance(psi, stl.G) else stl.Or
+        binop = stl.andf if isinstance(psi, stl.G) else stl.orf
 
         # Discrete time
         times = discretize(psi.interval)
 
         # Compute terms lens
         terms = stl.terms_lens(psi.arg)
-        psi = binop(tuple(terms.time + i for i in times))
+        psi = binop(*(terms.time + i for i in times))
         phi = curr_len.set(psi, state=phi)
 
     # Recurse and update Phi

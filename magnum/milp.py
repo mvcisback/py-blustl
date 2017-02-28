@@ -71,7 +71,6 @@ def sl_to_milp(phi:"SL", g:Game, assigned=None, p1=True):
 
     # TODO: support alternative objective functions
     model.setObjective(store[phi])
-    
     return model, store
 
 
