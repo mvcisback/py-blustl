@@ -27,20 +27,19 @@ from stl import STL
 
 import magnum.simplify_mtl
 
-Specs = namedtuple("Specs", "sys env init dyn")
+Specs = namedtuple("Specs", "sys env init dyn learned")
 Game = namedtuple("Game", "spec model meta")
-Model = namedtuple("Model", "dt N vars bounds")
+Model = namedtuple("Model", "dt N vars bounds t")
 Vars = namedtuple("Vars", "state input env")
 Meta = namedtuple("Meta", "pri names")  # TODO populate
 
 
-def game_to_stl(g: Game, *, with_init=True) -> STL:
-    # TODO: support symbolic matricies
-    sys, env = stl.andf(*g.spec.sys), stl.andf(*g.spec.env)
-    phi = (sys | ~env) if g.spec.env else sys
-    dyn = stl.andf(*g.spec.dyn)
-    spec = phi & dyn
-    return spec if with_init else spec & stl.andf(*g.spec.init)
+def game_to_stl(g: Game, *, with_init=True, invert_game=False) -> STL:
+    phi = g.spec.sys | ~g.spec.env
+    if invert_game:
+        phi = ~phi
+    phi = phi & g.spec.dyn & g.spec.learned
+    return phi if with_init else phi & g.spec.init
 
 
 def discretize_game(g: Game) -> Game:
@@ -48,7 +47,7 @@ def discretize_game(g: Game) -> Game:
     return lens(g).spec.set(specs)
 
 
-def mpc_games_stl_generator(g: Game, endless=False) -> STL:
+def mpc_games(g: Game, endless=False) -> [Game]:
     yield g
     spec_lens = lens(g).spec
     H2 = sym.Dummy("H_2")
@@ -70,8 +69,8 @@ def mpc_games_stl_generator(g: Game, endless=False) -> STL:
         yield g
 
 
-def mpc_games_lra_generator(g: Game, endless=False) -> STL:
-    for g in map(discretize_game, mpc_games_stl_generator(g)):
+def discrete_mpc_games(g: Game, endless=False) -> [Game]:
+    for g in map(discretize_game, mpc_games(g)):
         yield g
 
     while endless:
@@ -185,6 +184,7 @@ def from_yaml(path) -> Game:
             pri_map[p] = spec.get('pri')
             spec_map[kind].append(p)
     spec_map = fn.walk_values(lambda x: stl.andf(*x), spec_map)
+    spec_map['learned'] = stl.TOP
     spec = Specs(**spec_map)
     meta = Meta(pri_map, name_map)
 
@@ -203,6 +203,6 @@ def from_yaml(path) -> Game:
         k: (float(v[0][1:]), float(v[1][:-1]))
         for k, v in bounds.items()
     }
-    model = Model(dt=dt, N=steps, vars=Vars(**stl_var_map), bounds=bounds)
+    model = Model(dt=dt, N=steps, vars=Vars(**stl_var_map), bounds=bounds, t=0)
 
     return Game(spec=spec, model=model, meta=meta)

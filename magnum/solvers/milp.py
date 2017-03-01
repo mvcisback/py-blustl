@@ -52,7 +52,7 @@ def add_constr(model, constr, kind: K, i: int):
 def game_to_milp(g: Game):
     # TODO: port to new Signal Logic based API
     # TODO: optimize away top level Ands
-    phi = game_to_stl(g)
+    phi = game.game_to_stl(g)
     model = lp.LpProblem(DEFAULT_NAME, lp.LpMaximize)
     lp_vars = set(stl.utils.vars_in_phi(phi))
 

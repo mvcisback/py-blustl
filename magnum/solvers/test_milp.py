@@ -4,7 +4,7 @@ import stl
 from nose2.tools import params
 import sympy as sym
 
-from magnum import milp
+from magnum.solvers import milp
 
 
 class TestGame(unittest.TestCase):
