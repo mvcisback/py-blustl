@@ -42,15 +42,16 @@ See examples/feasible_example.yaml
 
 ```python
 import magnum
+from magnum.solvers import milp
 
 # Load game scenario
 g = magnum.from_yaml("examples/feasible_example.yaml")
 
-# Create spec for game
-spec = magnum.one_off_game_to_sl(g)
+# We're going to use the MILP solver so need to discretize
+g = magnum.discretize_game(g)
 
-# Pass spec to MILP oracle and print solution
-print(magnum.encode_and_run(spec, g))
+# Pass to MILP oracle and print solution
+print(milp.encode_and_run(g))
 ```
 
 # Non-Adversarial MPC Usage example
