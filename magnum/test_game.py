@@ -5,7 +5,9 @@ import unittest
 
 g = game.from_yaml("examples/feasible_example.yaml")
 
+
 class TestGame(unittest.TestCase):
+
     def test_set_time(self):
         pass
 
@@ -21,7 +23,7 @@ class TestGame(unittest.TestCase):
     def test_smoke_discrete_mpc_games(self):
         specs = list(game.discrete_mpc_games(g))
         self.assertEqual(len(specs), 2)
-        
+
     def test_smoke_mpc_games(self):
         specs = list(game.mpc_games(g))
         self.assertEqual(len(specs), 2)
@@ -31,7 +33,8 @@ class TestGame(unittest.TestCase):
 
     def game_to_stl(self):
         phi = game.game_to_stl(g)
-        phi2 = stl.parse("F[0,2](x > 5) & G[0,2](x + -1*x' + dt*5*u = 0) & (x = 0)")
+        phi2 = stl.parse(
+            "F[0,2](x > 5) & G[0,2](x + -1*x' + dt*5*u = 0) & (x = 0)")
         self.assertEqual(phi, phi2)
 
     def test_from_yaml(self):

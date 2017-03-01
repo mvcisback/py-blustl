@@ -6,6 +6,7 @@ import unittest
 import magnum
 from magnum.solvers import cegis
 
+
 class TestAdv(unittest.TestCase):
 
     def test_zero_sum_game(self):
@@ -17,4 +18,4 @@ class TestAdv(unittest.TestCase):
         res1 = cegis.cegis(g)
         #res2 = cegis.cegis(~phi, g, 0)
         self.assertIsNotNone(res1)
-        #self.assertIsNone(res2)
+        # self.assertIsNone(res2)

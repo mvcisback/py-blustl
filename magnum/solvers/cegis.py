@@ -12,7 +12,7 @@ from magnum.utils import project_solution_stl
 
 def cegis(g):
     return fn.last(cegis_loop(g))
-    
+
 
 def cegis_loop(g):
     """CEGIS for dominant/robust strategy.
@@ -34,7 +34,7 @@ def cegis_loop(g):
     for p in cycle([p1, p2]):
         # Tell p about previous response and get p's response.
         response = p.send(response)
-        yield response # generator for monitoring/testing
+        yield response  # generator for monitoring/testing
 
         # p failed to respond, thus the game ends.
         if not response.feasible:

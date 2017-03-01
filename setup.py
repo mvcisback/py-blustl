@@ -16,4 +16,4 @@ setup(name='magnumSTL',
           'pyeda',
       ],
       packages=find_packages(),
-)
+      )
