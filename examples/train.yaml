@@ -1,0 +1,34 @@
+# Model
+model:
+  time_horizon: 15
+  dt: 1
+
+  vars:
+    state: [Tm]
+    input: [Do]
+    env: [Te]
+
+  bounds:
+    Do: (0, 1)
+    Te: (0, 1)
+    Tm: (0, 1)
+
+# Specification
+
+init:
+
+env:
+  - name: TrainEnters
+    stl: "F[0, 4](Te)"
+  - name: TrainEntersOnce
+    stl: "G[0, 5]((Te) -> (G[1, 10](~(Te))))"
+
+sys:
+  - name: TrainMoves
+    stl: "G[0, 13]((Te) -> (G[0, 2](Tm)))"
+  - name: DoorClosedDuringMovement
+    stl: "G[0, 15]((Tm) -> (~(Do)))"
+  - name: DoorOpens
+    stl: "G[0, 10]((Te) -> (F[0, 5](Do)))"
+
+dyn:
