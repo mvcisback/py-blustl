@@ -34,16 +34,13 @@ Vars = namedtuple("Vars", "state input env")
 Meta = namedtuple("Meta", "pri names")  # TODO populate
 
 
-def one_off_game_to_stl(g: Game, *, with_init=True) -> STL:
+def game_to_stl(g: Game, *, with_init=True) -> STL:
     # TODO: support symbolic matricies
     sys, env = stl.andf(*g.spec.sys), stl.andf(*g.spec.env)
     phi = (sys | ~env) if g.spec.env else sys
     dyn = stl.andf(*g.spec.dyn)
     spec = phi & dyn
-    if with_init:
-        return spec & stl.andf(*g.spec.init)
-    else:
-        return spec
+    return spec if with_init else spec & stl.andf(*g.spec.init)
 
 
 def discretize_game(g: Game) -> Game:
