@@ -7,7 +7,7 @@ import stl
 
 from magnum.game import mpc_games_sl_generator, Game, discretize_stl, set_time
 from magnum.game import Game
-from magnum import non_adversarial
+from magnum.milp import encode_and_run
 from magnum.adversarial import cegis
 from magnum.utils import to_lineq
 

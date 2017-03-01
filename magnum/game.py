@@ -47,7 +47,8 @@ def one_off_game_to_stl(g: Game, *, with_init=True) -> STL:
 
 
 def one_off_game_to_sl(g: Game) -> STL:
-    return discretize_stl(one_off_game_to_stl(g), g)
+    specs = Specs(*(discretize_stl(spec, m=g.model) for spec in g.spec))
+    return lens(g).spec.set(specs)
 
 
 def mpc_games_stl_generator(g: Game) -> STL:
@@ -78,12 +79,12 @@ def negative_time_filter(lineq):
 filter_none = lambda x: tuple(y for y in x if y is not None)
 
 
-def discretize_stl(phi: STL, g: Game) -> "SL":
+def discretize_stl(phi: STL, m:Model) -> "SL":
     # Erase Modal Ops
-    psi = stl_to_sl(phi, discretize=partial(discretize, m=g.model))
+    psi = stl_to_sl(phi, discretize=partial(discretize, m=m))
     # Set time
     focus = stl.lineq_lens(psi, bind=False)
-    psi = set_time(t=0, dt=g.model.dt, tl=focus.bind(psi).terms.each_())
+    psi = set_time(t=0, dt=m.dt, tl=focus.bind(psi).terms.each_())
 
     # Type cast time to int (and forget about sympy stuff)
     psi = focus.bind(psi).terms.each_().time.modify(int)
@@ -177,7 +178,7 @@ def from_yaml(path) -> Game:
             name_map[p] = spec.get('name')
             pri_map[p] = spec.get('pri')
             spec_map[kind].append(p)
-    spec_map = fn.walk_values(tuple, spec_map)
+    spec_map = fn.walk_values(lambda x: stl.andf(*x), spec_map)
     spec = Specs(**spec_map)
     meta = Meta(pri_map, name_map)
 

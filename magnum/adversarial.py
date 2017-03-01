@@ -51,7 +51,6 @@ def player(phi, g, t, inputs, adv_inputs, is_sys=True):
         # Step 1) prev input had counter strategy, so ban it.
         if prev_input is not stl.TOP:
             banned_inputs.add(prev_input)
-        import ipdb; ipdb.set_trace()
 
         # Step 2) respond to w's response.
         psi = phi & response
