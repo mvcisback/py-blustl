@@ -46,29 +46,38 @@ def one_off_game_to_stl(g: Game, *, with_init=True) -> STL:
         return spec
 
 
-def one_off_game_to_sl(g: Game) -> STL:
+def discretize_game(g: Game) -> Game:
     specs = Specs(*(discretize_stl(spec, m=g.model) for spec in g.spec))
     return lens(g).spec.set(specs)
 
 
-def mpc_games_stl_generator(g: Game) -> STL:
-    psi = one_off_game_to_stl(g, with_init=False)
-    yield psi
+def mpc_games_stl_generator(g: Game, endless=False) -> STL:
+    yield g
+    spec_lens = lens(g).spec
     H2 = sym.Dummy("H_2")
-    param_lens = stl.utils.param_lens(stl.G(stl.Interval(0, H2), psi))
+    def make_mpc_template(phi):
+        return stl.utils.param_lens(stl.G(stl.Interval(0, H2), phi))
 
+    def set_horizon(phi_lens, h2):
+        return stl.utils.set_params(phi_lens, {H2: h2})
+
+    templates = Specs(*map(make_mpc_template, g.spec))
+    
     for n in range(1, g.model.N):
-        psi = stl.utils.set_params(param_lens, {H2: n * g.model.dt})
-        yield psi
+        spec = Specs(*(set_horizon(pl, n*g.model.dt) for pl in templates))
+        g = spec_lens.set(spec)
+        yield g
 
-    while True:
-        yield psi
+    while endless:
+        yield g
 
 
-def mpc_games_sl_generator(g: Game) -> STL:
-    for phi, prev in fn.with_prev(mpc_games_stl_generator(g)):
-        psi = discretize_stl(phi, g)
-        yield psi if prev == phi else discretize_stl(phi, g)
+def mpc_games_lra_generator(g: Game, endless=False) -> STL:
+    for g in map(discretize_game, mpc_games_stl_generator(g)):
+        yield g
+
+    while endless:
+        yield g
 
 
 def negative_time_filter(lineq):
@@ -79,9 +88,9 @@ def negative_time_filter(lineq):
 filter_none = lambda x: tuple(y for y in x if y is not None)
 
 
-def discretize_stl(phi: STL, m:Model) -> "SL":
+def discretize_stl(phi: STL, m:Model) -> "LRA":
     # Erase Modal Ops
-    psi = stl_to_sl(phi, discretize=partial(discretize, m=m))
+    psi = stl_to_lra(phi, discretize=partial(discretize, m=m))
     # Set time
     focus = stl.lineq_lens(psi, bind=False)
     psi = set_time(t=0, dt=m.dt, tl=focus.bind(psi).terms.each_())
@@ -105,12 +114,12 @@ def discretize(interval: stl.Interval, m: Model):
     return range(f(t_0), f(t_f) + 1)
 
 
-def stl_to_sl(phi: STL, discretize) -> "SL":
+def stl_to_lra(phi: STL, discretize) -> "LRA":
     """Returns STL formula with temporal operators erased"""
-    return _stl_to_sl([phi], curr_len=lens()[0], discretize=discretize)[0]
+    return _stl_to_lra([phi], curr_len=lens()[0], discretize=discretize)[0]
 
 
-def _stl_to_sl(phi, *, curr_len, discretize):
+def _stl_to_lra(phi, *, curr_len, discretize):
     """Returns STL formula with temporal operators erased"""
     # Warning: _heavily_ uses the lenses library
     # TODO: support Until
@@ -136,10 +145,10 @@ def _stl_to_sl(phi, *, curr_len, discretize):
     if isinstance(psi, stl.NaryOpSTL):
         child_lens = (curr_len.args[i] for i in range(len(psi.children())))
         for l in child_lens:
-            phi = _stl_to_sl(phi, curr_len=l, discretize=discretize)
+            phi = _stl_to_lra(phi, curr_len=l, discretize=discretize)
 
     elif isinstance(psi, stl.Neg):
-        phi = _stl_to_sl(phi, curr_len=curr_len.arg, discretize=discretize)
+        phi = _stl_to_lra(phi, curr_len=curr_len.arg, discretize=discretize)
     return phi
 
 
