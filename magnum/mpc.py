@@ -5,7 +5,7 @@ from itertools import chain, repeat
 import funcy as fn
 import stl
 
-from magnum.game import mpc_games_sl_generator, Game, discretize_stl, set_time
+from magnum.game import discrete_mpc_games, discretize_stl, set_time
 from magnum.game import Game
 from magnum.milp import encode_and_run
 from magnum.adversarial import cegis
@@ -36,25 +36,28 @@ def specs(g: Game):
     TODO: Incorporate Lipshitz bound to bound measurements
     """
     init = {phi.terms[0].id: phi.const for phi in g.spec.init}
-    spec_gen = mpc_games_sl_generator(g)
-    phi = next(spec_gen)
-    yield queue_to_sl(g, [init]) & phi
+    spec_gen = discretize_mpc_games(g, endless=True)
+
+    # Bootstrap MPC loop
+    g = next(spec_gen)
+    yield queue_to_sl(g, [init]) & game.game_to_stl(g)
 
     q = deque([], maxlen=g.model.N)
     for phi in spec_gen:
-        t, predicts, meas = yield queue_to_sl(g, q) & phi
+        t, predicts, meas = yield queue_to_sl(g, q) & game.game_to_stl(g)
         q.append(predicts)
         # TODO: incorporate meas
 
 
 def mpc(g: Game):
     mpc_specs = specs(g)
-    phi = next(mpc_specs)
+    predict = encode_and_run if len(g.model.vars.env) == 0 else cegis
     external_meas = set()
-    predict = non_adversarial.predict if len(g.model.vars.env) == 0 else cegis
-    H = 2 * g.model.N - 1
-    for t in chain(range(H), repeat(H)):
-        prediction = predict(phi, g, t)
+
+    # Start MPC Interaction
+    g = next(mpc_specs)
+    while True:
+        prediction = predict(g)
         if not prediction.feasible:
             return prediction
         predicted_meas = prediction.solution.get(t, dict())

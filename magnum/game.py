@@ -62,7 +62,7 @@ def mpc_games(g: Game, endless=False) -> [Game]:
 
     for n in range(1, g.model.N):
         spec = Specs(*(set_horizon(pl, n * g.model.dt) for pl in templates))
-        g = spec_lens.set(spec)
+        g = lens(spec_lens.set(spec)).model.t.set(n)
         yield g
 
     while endless:
