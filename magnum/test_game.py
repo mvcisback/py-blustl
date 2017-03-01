@@ -1,10 +1,12 @@
 from nose2.tools import params
 import unittest
 
+
 class TestGame(unittest.TestCase):
+
     def test_vars_in_phi(self):
         pass
-        
+
     def test_set_time(self):
         pass
 

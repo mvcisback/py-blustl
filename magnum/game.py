@@ -2,7 +2,7 @@
 TODO: Game to pdf
 TODO: Create script to automatically generate game spec
 TODO: Include meta information in Game
-- Annotate stl with priority 
+- Annotate stl with priority
 - Annotate stl with name
 - Annotate stl with changeability
 TODO: add test to make sure phi is hashable after transformation
@@ -55,6 +55,7 @@ def mpc_games_stl_generator(g: Game, endless=False) -> STL:
     yield g
     spec_lens = lens(g).spec
     H2 = sym.Dummy("H_2")
+
     def make_mpc_template(phi):
         return stl.utils.param_lens(stl.G(stl.Interval(0, H2), phi))
 
@@ -62,9 +63,9 @@ def mpc_games_stl_generator(g: Game, endless=False) -> STL:
         return stl.utils.set_params(phi_lens, {H2: h2})
 
     templates = Specs(*map(make_mpc_template, g.spec))
-    
+
     for n in range(1, g.model.N):
-        spec = Specs(*(set_horizon(pl, n*g.model.dt) for pl in templates))
+        spec = Specs(*(set_horizon(pl, n * g.model.dt) for pl in templates))
         g = spec_lens.set(spec)
         yield g
 
@@ -88,7 +89,7 @@ def negative_time_filter(lineq):
 filter_none = lambda x: tuple(y for y in x if y is not None)
 
 
-def discretize_stl(phi: STL, m:Model) -> "LRA":
+def discretize_stl(phi: STL, m: Model) -> "LRA":
     # Erase Modal Ops
     psi = stl_to_lra(phi, discretize=partial(discretize, m=m))
     # Set time
@@ -165,7 +166,6 @@ def set_time(*, t, dt=stl.dt_sym, tl=None, phi=None):
     return focus.modify(_set_time)
 
 
-
 def from_yaml(path) -> Game:
     if isinstance(path, (str, pathlib.Path)):
         with pathlib.Path(path).open("r") as f:
@@ -200,7 +200,6 @@ def from_yaml(path) -> Game:
     stl_var_map['input'] = list(map(sym.Symbol, stl_var_map['input']))
     stl_var_map['state'] = list(map(sym.Symbol, stl_var_map['state']))
     stl_var_map['env'] = list(map(sym.Symbol, stl_var_map['env']))
-
 
     bounds = {k: v.split(",") for k, v in g["model"]["bounds"].items()}
     bounds = {

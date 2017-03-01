@@ -30,7 +30,7 @@ from magnum.utils import Result
 DEFAULT_NAME = 'controller_synth'
 
 
-def z(x:"SL", i:int, g:Game):
+def z(x: "SL", i: int, g: Game):
     # TODO: come up with better function name
     cat = C.Bool if isinstance(x, stl.LinEq) else C.Real
     if isinstance(x, stl.LinEq):
@@ -42,15 +42,14 @@ def z(x:"SL", i:int, g:Game):
         lo, hi = g.model.bounds.get(str(x[0]))
         kwargs = {"lowBound": lo, "upBound": hi, "name": f"{x[0]}_{x[1]}"}
     return lp.LpVariable(cat=cat.value, **kwargs)
-    
 
 
-def add_constr(model, constr, kind:K, i:int):
+def add_constr(model, constr, kind: K, i: int):
     name = "{}{}".format(kind.name, i)
     model.addConstraint(constr, name=name)
 
 
-def sl_to_milp(phi:"SL", g:Game, assigned=None, p1=True):
+def sl_to_milp(phi: "SL", g: Game, assigned=None, p1=True):
     """STL -> MILP"""
     # TODO: port to new Signal Logic based API
     # TODO: optimize away top level Ands
@@ -63,9 +62,9 @@ def sl_to_milp(phi:"SL", g:Game, assigned=None, p1=True):
     stl_constr = cat(encode(phi, store) for phi in nodes)
     constraints = chain(
         stl_constr,
-        [(store[phi] == 1, K.ASSERT_FEASIBLE)] # Assert Feasibility
+        [(store[phi] == 1, K.ASSERT_FEASIBLE)]  # Assert Feasibility
     )
-    
+
     for i, (constr, kind) in enumerate(constraints):
         add_constr(model, constr, kind, i)
 
@@ -80,8 +79,8 @@ def encode(psi, s):
 
 
 @encode.register(stl.LinEq)
-def _(psi, s:dict):
-    x = sum(float(term.coeff)*s[(term.id, term.time)] for term in psi.terms)
+def _(psi, s: dict):
+    x = sum(float(term.coeff) * s[(term.id, term.time)] for term in psi.terms)
     if psi.op == "=":
         yield x == psi.const, K.PRED_EQ
     else:
@@ -90,17 +89,18 @@ def _(psi, s:dict):
         M = 1000  # TODO
         # TODO: come up w. better value for eps
         eps = 1e-5 if psi.op in (">=", "<=") else 0
-        mu = x - psi.const + eps if psi.op in ("<", "<=") else psi.const - x - eps
+        mu = x - psi.const + \
+            eps if psi.op in ("<", "<=") else psi.const - x - eps
         yield -mu <= M * z_t, K.PRED_UPPER
-        yield mu <= M * (1 - z_t) , K.PRED_LOWER
+        yield mu <= M * (1 - z_t), K.PRED_LOWER
 
 
 @encode.register(stl.Neg)
-def _(phi, s:dict):
+def _(phi, s: dict):
     yield s[phi] == 1 - s[phi.arg], K.NEG
 
 
-def encode_op(phi:"SL", s:dict, *, k:Kind, isor:bool):
+def encode_op(phi: "SL", s: dict, *, k: Kind, isor: bool):
     z_phi = s[phi]
     elems = [s[psi] for psi in phi.args]
     rel, const = (op.ge, 0) if isor else (op.le, 1 - len(elems))
@@ -111,7 +111,8 @@ def encode_op(phi:"SL", s:dict, *, k:Kind, isor:bool):
 
 
 encode.register(stl.Or)(partial(encode_op, k=(K.OR, K.OR_TOTAL), isor=True))
-encode.register(stl.And)(partial(encode_op, k=(K.AND, K.AND_TOTAL), isor=False))
+encode.register(stl.And)(
+    partial(encode_op, k=(K.AND, K.AND_TOTAL), isor=False))
 
 
 def encode_and_run(phi, g):
@@ -125,7 +126,7 @@ def encode_and_run(phi, g):
         f = lambda x: x[0][0]
         f2 = lambda x: (tuple(map(int, x[0][1:].split('_'))), x[1])
         f3 = compose(tuple, sorted, partial(map, f2))
-        variables = {v: (k[1], k[0], v) for k, v in store.items() 
+        variables = {v: (k[1], k[0], v) for k, v in store.items()
                      if not isinstance(k[0], tuple)}
 
         sol = filter(None, map(variables.get, model.variables()))

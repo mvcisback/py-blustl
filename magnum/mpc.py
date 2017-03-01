@@ -12,15 +12,15 @@ from magnum.adversarial import cegis
 from magnum.utils import to_lineq
 
 
-def queue_to_sl(g:Game, q):
+def queue_to_sl(g: Game, q):
     """Takes measurements and writes appropriate STL.
     Currently assumes piecewise interpolation of measurements.
     TODO: Incorporate Lipshitz bound to bound measurements
-    """ 
-    def measure_lemma(vals:stl, t:int):
+    """
+    def measure_lemma(vals: stl, t: int):
         # TODO: Interval should just be [t, t+g.model.dt)
         # Currently a hack since we don't support open intervals
-        psi = stl.G(stl.Interval(t, t+g.model.dt/2), to_lineq(vals))
+        psi = stl.G(stl.Interval(t, t + g.model.dt / 2), to_lineq(vals))
         return discretize_stl(psi, g)
 
     # TODO: Set time based on position in queue
@@ -28,7 +28,7 @@ def queue_to_sl(g:Game, q):
                       enumerate(q) if len(phis) != 0])
 
 
-def specs(g:Game):
+def specs(g: Game):
     """Co-routine:
       - Yields: MPC SL
       - Recieves: Set of LinEqs (called measurements)
@@ -47,12 +47,12 @@ def specs(g:Game):
         # TODO: incorporate meas
 
 
-def mpc(g:Game):
+def mpc(g: Game):
     mpc_specs = specs(g)
     phi = next(mpc_specs)
     external_meas = set()
     predict = non_adversarial.predict if len(g.model.vars.env) == 0 else cegis
-    H = 2*g.model.N - 1
+    H = 2 * g.model.N - 1
     for t in chain(range(H), repeat(H)):
         prediction = predict(phi, g, t)
         if not prediction.feasible:

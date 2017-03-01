@@ -11,6 +11,7 @@ import stl
 from magnum import game
 from magnum.utils import Result
 
+
 def _bounds(phi, g):
     vars_ = [stl.Var(1, s, t) for s, t in stl.utils.vars_in_phi(phi)]
     for i, op in enumerate((">=", "<=")):
@@ -22,14 +23,15 @@ def bounds(phi, g):
     return stl.andf(*_bounds(phi, g))
 
 
-def sl_to_smt(phi:"SL", g):
-    store = {(s, t): Symbol(f"{s}[{t}]", REAL) for s, t in stl.utils.vars_in_phi(phi)}
+def sl_to_smt(phi: "SL", g):
+    store = {(s, t): Symbol(f"{s}[{t}]", REAL)
+             for s, t in stl.utils.vars_in_phi(phi)}
     psi = bounds(phi, g) & phi
     f = encode(psi, store)
     if len(g.model.vars.env) > 0:
-        adv_vars = [smt_sym for (s, _), smt_sym in store.items() 
+        adv_vars = [smt_sym for (s, _), smt_sym in store.items()
                     if s in g.model.vars.env]
-        sys_vars = [smt_sym for (s, _), smt_sym in store.items() 
+        sys_vars = [smt_sym for (s, _), smt_sym in store.items()
                     if s in g.model.vars.inputs]
         f = ForAll(adv_vars, Exists(sys_vars, f))
     return f, store
@@ -48,27 +50,32 @@ GET_OP = {
 def encode(psi, s):
     raise NotImplementedError(psi)
 
+
 @encode.register(stl.LinEq)
-def _(psi, s:dict):
-    x = sum(float(term.coeff)*(s[(term.id, term.time)]+0) for term in psi.terms)
+def _(psi, s: dict):
+    x = sum(float(term.coeff) *
+            (s[(term.id, term.time)] +
+             0) for term in psi.terms)
     return GET_OP[psi.op](x, psi.const)
 
 
 @encode.register(stl.AtomicPred)
-def _(psi, s:dict):
+def _(psi, s: dict):
     return Symbol(s[(psi.id, psi.time)], BooleanType)
 
 
 @encode.register(stl.And)
-def _(psi, s:dict):
+def _(psi, s: dict):
     return reduce(op.and_, (encode(x, s) for x in psi.args))
 
+
 @encode.register(stl.Or)
-def _(psi, s:dict):
+def _(psi, s: dict):
     return reduce(op.or_, (encode(x, s) for x in psi.args))
 
+
 @encode.register(stl.Neg)
-def _(psi, s:dict):
+def _(psi, s: dict):
     return ~encode(psi.arg, s)
 
 
@@ -78,6 +85,8 @@ def encode_and_run(phi, g):
     model = get_model(f)
     if model is None:
         return Result(False, None, None, None)
-    solution = fn.group_by(ig(0), ((t, s, model[v]) for (s, t), v in store.items()))
+    solution = fn.group_by(
+        ig(0), ((t, s, model[v]) for (
+            s, t), v in store.items()))
     solution = fn.walk_values(lambda xs: {k: v for _, k, v in xs}, solution)
     return Result(True, model, None, solution)

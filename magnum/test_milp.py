@@ -13,7 +13,7 @@ class TestGame(unittest.TestCase):
         phi1 = stl.parse(
             "((x[0] > 5) or (x[1] > 5)) & (~(((x[0] > 5) & (x[1] > 5))))")
 
-        a,b,c,d,e,f,x0,x1 = sym.symbols("a b c d e f x0 x1")
+        a, b, c, d, e, f, x0, x1 = sym.symbols("a b c d e f x0 x1")
 
         s = {
             phi1: a,
@@ -41,4 +41,3 @@ class TestGame(unittest.TestCase):
         neg_res = {x[0] for x in milp.encode(phi1.args[1], s)}
         self.assertEqual(len(neg_res), 1)
         self.assertEqual(neg_res, neg_sol)
-

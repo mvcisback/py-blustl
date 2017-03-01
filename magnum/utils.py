@@ -10,7 +10,8 @@ def to_lineq(d: dict, t=stl.t_sym):
 
 
 def project_solution_stl(sol, keys, t):
-    vals = [to_lineq(fn.project(v, keys), t=k) for k,v in sol.items() if k >= t]
+    vals = [to_lineq(fn.project(v, keys), t=k)
+            for k, v in sol.items() if k >= t]
     return stl.andf(*vals)
 
 
