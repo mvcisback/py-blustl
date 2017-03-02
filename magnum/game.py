@@ -42,6 +42,14 @@ def game_to_stl(g: Game, *, with_init=True, invert_game=False) -> STL:
     return phi if with_init else phi & g.spec.init
 
 
+def invert_game(g):
+    g2 = lens(g).spec.env.set(stl.TOP)
+    g2 = lens(g2).spec.sys.set(g.spec.env & ~g.spec.sys)
+    g2 = lens(g2).model.vars.env.set(g.model.vars.input)
+    g2 = lens(g2).model.vars.input.set(g.model.vars.env)
+    return g2
+
+
 def discretize_game(g: Game) -> Game:
     specs = Specs(*(discretize_stl(spec, m=g.model) for spec in g.spec))
     return lens(g).spec.set(specs)

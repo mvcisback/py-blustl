@@ -8,6 +8,7 @@ from magnum.game import Game
 from magnum.constraint_kinds import Kind as K, Kind
 from magnum.constraint_kinds import Category as C
 
+
 def z(x: "SL", i: int, g: Game):
     # TODO: come up with better function name
     cat = C.Bool if isinstance(x, stl.LinEq) else C.Real
@@ -20,6 +21,7 @@ def z(x: "SL", i: int, g: Game):
         lo, hi = g.model.bounds.get(str(x[0]))
         kwargs = {"lowBound": lo, "upBound": hi, "name": f"{x[0]}_{x[1]}"}
     return lp.LpVariable(cat=cat.value, **kwargs)
+
 
 @singledispatch
 def encode(psi, s):

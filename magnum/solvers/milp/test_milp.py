@@ -5,6 +5,7 @@ from nose2.tools import params
 import sympy as sym
 
 from magnum.solvers import milp
+from magnum.solvers.milp import boolean_encoding
 
 
 class TestGame(unittest.TestCase):
@@ -30,14 +31,14 @@ class TestGame(unittest.TestCase):
         neg_sol = {1 - d == 1}
         pred0_sol = {}
 
-        top_level_and_res = {x[0] for x in milp.encode(phi1, s)}
+        top_level_and_res = {x[0] for x in boolean_encoding.encode(phi1, s)}
         self.assertEqual(len(top_level_and_sol), 3)
         self.assertEqual(top_level_and_sol, top_level_and_res)
 
-        left_or_res = {x[0] for x in milp.encode(phi1.args[0], s)}
+        left_or_res = {x[0] for x in boolean_encoding.encode(phi1.args[0], s)}
         self.assertEqual(len(left_or_res), 3)
         self.assertEqual(left_or_res, left_or_sol)
 
-        neg_res = {x[0] for x in milp.encode(phi1.args[1], s)}
+        neg_res = {x[0] for x in boolean_encoding.encode(phi1.args[1], s)}
         self.assertEqual(len(neg_res), 1)
         self.assertEqual(neg_res, neg_sol)

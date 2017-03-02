@@ -19,11 +19,8 @@ def cegis_loop(g):
     ∃u∀w . (x(u, w, t), u, w) ⊢ φ
     """
     # Create player for sys and env resp.
-    phi1 = magnum.game_to_stl(g)
-    phi2 = magnum.game_to_stl(g, invert_game=True)
-    p1 = player(phi1, g, g.model.vars.input, g.model.vars.env)
-    p2 = player(phi2, g, g.model.vars.env, g.model.vars.input,
-                is_sys=False)
+    p1 = player(g, is_sys=True)
+    p2 = player(magnum.game.invert_game(g), is_sys=False)
 
     # Start Co-Routines
     next(p1)
@@ -41,12 +38,13 @@ def cegis_loop(g):
             return None if p == p1 else response.solution
 
 
-def player(phi, g, inputs, adv_inputs, is_sys=True):
+def player(g, is_sys=True):
     """Player co-routine.
     Receives counter example and then returns response. Remembers
     previous inputs that the adv responded to and won't play them
     again.
     """
+    inputs, adv_inputs = g.model.vars.input, g.model.vars.env
     counter_example = yield
 
     # We must be the first player. Give unconstrained response.

@@ -36,15 +36,16 @@ def specs(g: Game):
     TODO: Incorporate Lipshitz bound to bound measurements
     """
     init = {phi.terms[0].id: phi.const for phi in g.spec.init}
-    spec_gen = discretize_mpc_games(g, endless=True)
+    games = discretize_mpc_games(g, endless=True)
 
     # Bootstrap MPC loop
-    g = next(spec_gen)
+    g = next(games)
     yield queue_to_sl(g, [init]) & game.game_to_stl(g)
 
     q = deque([], maxlen=g.model.N)
-    for phi in spec_gen:
-        t, predicts, meas = yield queue_to_sl(g, q) & game.game_to_stl(g)
+    for g in games:
+        g = lens(g).spec.init.set(queue_to_sl(g, q))
+        t, predicts, meas = yield g
         q.append(predicts)
         # TODO: incorporate meas
 
