@@ -4,11 +4,12 @@ from itertools import chain, repeat
 
 import funcy as fn
 import stl
+from lenses import lens
 
 from magnum.game import discrete_mpc_games, discretize_stl, set_time
 from magnum.game import Game
-from magnum.milp import encode_and_run
-from magnum.adversarial import cegis
+from magnum.solvers.milp import encode_and_run
+from magnum.solvers.cegis import cegis
 from magnum.utils import to_lineq
 
 
@@ -21,7 +22,7 @@ def queue_to_sl(g: Game, q):
         # TODO: Interval should just be [t, t+g.model.dt)
         # Currently a hack since we don't support open intervals
         psi = stl.G(stl.Interval(t, t + g.model.dt / 2), to_lineq(vals))
-        return discretize_stl(psi, g)
+        return discretize_stl(psi, g.model)
 
     # TODO: Set time based on position in queue
     return stl.andf(*[measure_lemma(phis, t) for t, phis in
@@ -35,34 +36,34 @@ def specs(g: Game):
 
     TODO: Incorporate Lipshitz bound to bound measurements
     """
-    init = {phi.terms[0].id: phi.const for phi in g.spec.init}
-    games = discretize_mpc_games(g, endless=True)
+    games = discrete_mpc_games(g, endless=True)
 
     # Bootstrap MPC loop
     g = next(games)
-    yield queue_to_sl(g, [init]) & game.game_to_stl(g)
+    yield g
 
     q = deque([], maxlen=g.model.N)
     for g in games:
         g = lens(g).spec.init.set(queue_to_sl(g, q))
-        t, predicts, meas = yield g
+        predicts, meas = yield g
         q.append(predicts)
         # TODO: incorporate meas
 
 
 def mpc(g: Game):
-    mpc_specs = specs(g)
+    game_cr = specs(g)
     predict = encode_and_run if len(g.model.vars.env) == 0 else cegis
     external_meas = set()
 
     # Start MPC Interaction
-    g = next(mpc_specs)
+    g = next(game_cr)
     while True:
+        
         prediction = predict(g)
         if not prediction.feasible:
             return prediction
-        predicted_meas = prediction.solution.get(t, dict())
-        phi = mpc_specs.send((t, predicted_meas, external_meas))
-        external_meas = yield predicted_meas, phi
+        predicted_meas = prediction.solution.get(g.model.t, dict())
+        g = game_cr.send((predicted_meas, external_meas))
+        external_meas = yield predicted_meas, g
         if external_meas is None:
             external_meas = set()
