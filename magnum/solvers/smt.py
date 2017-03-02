@@ -79,8 +79,9 @@ def _(psi, s: dict):
     return ~encode(psi.arg, s)
 
 
-def encode_and_run(phi, g):
+def encode_and_run(g):
     # TODO: add bounds
+    phi = game.game_to_stl(g)
     f, store = sl_to_smt(phi, g)
     model = get_model(f)
     if model is None:
