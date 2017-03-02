@@ -71,5 +71,9 @@ print(controller.send(measurements)) # send measurements and print state, spec
 ```
 
 # Adversarial MPC Usage example
+import magnum
+from magnum.solvers.cegis import cegis
 
-Coming Soon
+g = magnum.from_yaml("examples/feasible_example.yaml")
+g = magnum.discretize_game(g)
+print(cegis(g))
