@@ -32,6 +32,12 @@ def add_constr(model, constr, kind: K, i: int):
     model.addConstraint(constr, name=name)
 
 
+def spec_nodes(phi):
+    if isinstance(phi, stl.And):
+        return cat(stl.walk(psi) for psi in phi.args)
+    return stl.walk(phi)
+
+
 def game_to_milp(g: Game, robust=True):
     # TODO: optimize away top level Ands
     z = rob_encode.z if robust else bool_encode.z
@@ -43,8 +49,8 @@ def game_to_milp(g: Game, robust=True):
     phis = [spec] + list(g.spec[2:])
     phis = [x for x in phis if x not in (stl.TOP, stl.BOT)]
 
-    lp_vars = reduce(op.or_, (set(stl.utils.vars_in_phi(phi)) for phi in phis))
-    nodes = reduce(op.or_, (set(stl.walk(phi)) for phi in phis))
+    lp_vars = set.union(*(set(stl.utils.vars_in_phi(phi)) for phi in phis))
+    nodes = set.union(*(set(spec_nodes(phi)) for phi in phis)) | {spec}
     store = {x: z(x, i, g) for i, x in enumerate(nodes | lp_vars)}
 
     stl_constr = cat(encode(phi, store) for phi in nodes)

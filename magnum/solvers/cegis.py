@@ -63,16 +63,16 @@ def player(g, is_sys=True):
             banned_inputs.add(prev_input)
 
         # Step 2) respond to w's response.
-        learned = response
-        if banned_inputs:
-            learned &= ~stl.orf(*banned_inputs)
-
+        learned = response & ~stl.orf(*banned_inputs)
         prediction = predict(learned_lens.set(learned))
 
         # Step 3) If not the system, need to consider old inputs
         # upon failure
+        # TODO: bench mark if it's better to relax problem
+        # or constrained problem
         if not prediction.feasible and not is_sys:
-            prediction = predict(learned_lens.set(response))
+            learned = response & stl.orf(*banned_inputs)
+            prediction = predict(learned_lens.set(learned))
 
         # Step 4) Yield response
         counter_example = yield prediction
