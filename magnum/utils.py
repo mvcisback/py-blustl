@@ -18,7 +18,10 @@ def project_solution_stl(sol, keys, t):
 
 Result = namedtuple("Result", ["feasible", "model", "cost", "solution"])
 
-def solution_to_pandas(res):
+def result_to_pandas(res):
+    if res.solution is None:
+        return None
+
     data =  {k: {str(k2): v2 for k2, v2 in v.items()} 
              for k,v in res.solution.items()}
     return pd.DataFrame(data=data).T
