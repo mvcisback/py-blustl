@@ -14,6 +14,7 @@ setup(name='magnumSTL',
           'py-stl',
           'pulp',
           'pyeda',
+          'pandas',
       ],
       packages=find_packages(),
       )

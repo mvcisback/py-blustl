@@ -34,12 +34,11 @@ Vars = namedtuple("Vars", "state input env")
 Meta = namedtuple("Meta", "pri names")  # TODO populate
 
 
-def game_to_stl(g: Game, *, with_init=True, invert_game=False) -> STL:
+def game_to_stl(g: Game, *, invert_game=False) -> STL:
     phi = g.spec.sys | ~g.spec.env
     if invert_game:
         phi = ~phi
-    phi = phi & g.spec.dyn & g.spec.learned
-    return phi if with_init else phi & g.spec.init
+    return phi & g.spec.dyn & g.spec.learned & g.spec.init
 
 
 def invert_game(g):
