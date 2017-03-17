@@ -3,13 +3,43 @@
 from collections import deque
 
 import stl
+import sympy as sym
 from lenses import lens
 
-from magnum.game import discrete_mpc_games, discretize_stl
-from magnum.game import Game
+from magnum.game import discretize_stl, discretize_game
+from magnum.game import Game, Specs
 from magnum.solvers.milp import encode_and_run
 from magnum.solvers.cegis import cegis
 from magnum.utils import to_lineq
+
+def mpc_games(g: Game, endless=False) -> [Game]:
+    yield g
+    spec_lens = lens(g).spec
+    H2 = sym.Dummy("H_2")
+
+    def make_mpc_template(phi):
+        return stl.utils.param_lens(stl.G(stl.Interval(0, H2), phi))
+
+    def set_horizon(phi_lens, h2):
+        return stl.utils.set_params(phi_lens, {H2: h2})
+
+    templates = Specs(*map(make_mpc_template, g.spec))
+
+    for n in range(1, g.model.N):
+        spec = Specs(*(set_horizon(pl, n * g.model.dt) for pl in templates))
+        g = lens(spec_lens.set(spec)).model.t.set(n)
+        yield g
+
+    while endless:
+        yield g
+
+
+def discrete_mpc_games(g: Game, endless=False) -> [Game]:
+    for g in map(discretize_game, mpc_games(g)):
+        yield g
+
+    while endless:
+        yield g
 
 
 def queue_to_sl(g: Game, q):

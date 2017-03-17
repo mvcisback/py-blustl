@@ -5,8 +5,8 @@ TODO: Include meta information in Game
 - Annotate stl with priority
 - Annotate stl with name
 - Annotate stl with changeability
-TODO: add test to make sure phi is hashable after transformation
 TODO: create map from SL expr to matching Temporal Logic term after conversion
+TODO: refactor discretization
 """
 
 from functools import partial
@@ -45,36 +45,6 @@ def invert_game(g):
 def discretize_game(g: Game) -> Game:
     specs = Specs(*(discretize_stl(spec, m=g.model) for spec in g.spec))
     return lens(g).spec.set(specs)
-
-
-def mpc_games(g: Game, endless=False) -> [Game]:
-    yield g
-    spec_lens = lens(g).spec
-    H2 = sym.Dummy("H_2")
-
-    def make_mpc_template(phi):
-        return stl.utils.param_lens(stl.G(stl.Interval(0, H2), phi))
-
-    def set_horizon(phi_lens, h2):
-        return stl.utils.set_params(phi_lens, {H2: h2})
-
-    templates = Specs(*map(make_mpc_template, g.spec))
-
-    for n in range(1, g.model.N):
-        spec = Specs(*(set_horizon(pl, n * g.model.dt) for pl in templates))
-        g = lens(spec_lens.set(spec)).model.t.set(n)
-        yield g
-
-    while endless:
-        yield g
-
-
-def discrete_mpc_games(g: Game, endless=False) -> [Game]:
-    for g in map(discretize_game, mpc_games(g)):
-        yield g
-
-    while endless:
-        yield g
 
 
 def negative_time_filter(lineq):

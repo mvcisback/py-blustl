@@ -1,4 +1,5 @@
 from magnum import game
+from magnum import mpc
 
 from nose2.tools import params
 import unittest
@@ -21,11 +22,11 @@ class TestGame(unittest.TestCase):
         pass
 
     def test_smoke_discrete_mpc_games(self):
-        specs = list(game.discrete_mpc_games(g))
+        specs = list(mpc.discrete_mpc_games(g))
         self.assertEqual(len(specs), 2)
 
     def test_smoke_mpc_games(self):
-        specs = list(game.mpc_games(g))
+        specs = list(mpc.mpc_games(g))
         self.assertEqual(len(specs), 2)
 
     def test_smoke_discretize_game(self):
