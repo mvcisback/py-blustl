@@ -1,12 +1,11 @@
+"""Module for taking a 1 off game and turning into a MPC game."""
 # TODO: incorporate external measurements
 from collections import deque
-from itertools import chain, repeat
 
-import funcy as fn
 import stl
 from lenses import lens
 
-from magnum.game import discrete_mpc_games, discretize_stl, set_time
+from magnum.game import discrete_mpc_games, discretize_stl
 from magnum.game import Game
 from magnum.solvers.milp import encode_and_run
 from magnum.solvers.cegis import cegis

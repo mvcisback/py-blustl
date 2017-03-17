@@ -3,7 +3,7 @@ from operator import itemgetter as ig
 from functools import singledispatch, reduce
 
 import funcy as fn
-from pysmt.shortcuts import Symbol, Equals, get_model, ForAll, Exists
+from pysmt.shortcuts import Symbol, get_model, ForAll, Exists
 from pysmt.typing import REAL, BooleanType
 
 import stl
@@ -14,8 +14,8 @@ from magnum.utils import Result
 
 def _bounds(phi, g):
     vars_ = [stl.Var(1, s, t) for s, t in stl.utils.vars_in_phi(phi)]
-    for i, op in enumerate((">=", "<=")):
-        to_lineq = lambda v: stl.LinEq((v,), op, g.model.bounds[str(v.id)][i])
+    for i, ineq in enumerate((">=", "<=")):
+        to_lineq = lambda v: stl.LinEq((v,), ineq, g.model.bounds[str(v.id)][i])
         yield from map(to_lineq, vars_)
 
 

@@ -1,6 +1,4 @@
-import stl
-
-from nose2.tools import params
+#from nose2.tools import params
 import unittest
 
 import magnum

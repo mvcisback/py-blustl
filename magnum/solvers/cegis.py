@@ -1,5 +1,4 @@
 from itertools import cycle
-from collections import namedtuple
 
 import stl
 import funcy as fn

@@ -10,16 +10,15 @@
 
 from itertools import chain
 import operator as op
-from functools import partial, reduce
+from functools import partial
 
 import pulp as lp
 import funcy as fn
-from funcy import cat, group_by, compose
+from funcy import cat, compose
 
 import stl
-from magnum import game
 from magnum.game import Game
-from magnum.constraint_kinds import Kind as K, Kind
+from magnum.constraint_kinds import Kind as K
 from magnum.utils import Result
 from magnum.solvers.milp import boolean_encoding as bool_encode
 from magnum.solvers.milp import robustness_encoding as rob_encode
@@ -76,9 +75,6 @@ def encode_and_run(g: Game, robust=True):
         return Result(False, model, None, None)
 
     elif status == "Optimal":
-        f = lambda x: x[0][0]
-        f2 = lambda x: (tuple(map(int, x[0][1:].split('_'))), x[1])
-        f3 = compose(tuple, sorted, partial(map, f2))
         if robust:
             variables = {v[0]: (k[1], k[0], v[0]) for k, v in store.items()
                          if not isinstance(k[0], tuple)}

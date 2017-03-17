@@ -10,7 +10,7 @@ class TestSMT(unittest.TestCase):
     def test_smoke_smt(self):
         g = magnum.from_yaml("examples/feasible_example.yaml")
         g = magnum.discretize_game(g)
-        phi = magnum.game_to_stl(g)
+        magnum.game_to_stl(g)
 
         res1 = smt.encode_and_run(g)
         self.assertTrue(res1.feasible)

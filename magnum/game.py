@@ -9,23 +9,18 @@ TODO: add test to make sure phi is hashable after transformation
 TODO: create map from SL expr to matching Temporal Logic term after conversion
 """
 
-from itertools import product, chain, starmap, repeat
 from functools import partial
 from collections import namedtuple, defaultdict
 from math import ceil
-import operator as op
 import pathlib
 
 import yaml
 import funcy as fn
-from funcy import pluck, group_by, drop, walk_values, compose
 import sympy as sym
 from lenses import lens
 
 import stl
 from stl import STL
-
-import magnum.simplify_mtl
 
 Specs = namedtuple("Specs", "sys env init dyn learned")
 Game = namedtuple("Game", "spec model meta")
@@ -34,10 +29,8 @@ Vars = namedtuple("Vars", "state input env")
 Meta = namedtuple("Meta", "pri names")  # TODO populate
 
 
-def game_to_stl(g: Game, *, invert_game=False) -> STL:
+def game_to_stl(g: Game) -> STL:
     phi = g.spec.sys | ~g.spec.env
-    if invert_game:
-        phi = ~phi
     return phi & g.spec.dyn & g.spec.learned & g.spec.init
 
 
