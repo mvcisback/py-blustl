@@ -21,10 +21,6 @@ class TestGame(unittest.TestCase):
     def test_negative_time_filter(self):
         pass
 
-    def test_smoke_discrete_mpc_games(self):
-        specs = list(mpc.discrete_mpc_games(g))
-        self.assertEqual(len(specs), 2)
-
     def test_smoke_mpc_games(self):
         specs = list(mpc.mpc_games(g))
         self.assertEqual(len(specs), 2)

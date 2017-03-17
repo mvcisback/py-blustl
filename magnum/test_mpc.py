@@ -6,6 +6,7 @@ import unittest
 
 
 class TestMPC(unittest.TestCase):
+
     def test_smoke_mpc(self):
         g = magnum.from_yaml("examples/feasible_example.yaml")
         g = magnum.discretize_game(g)
