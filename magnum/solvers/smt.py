@@ -27,14 +27,7 @@ def sl_to_smt(phi: "SL", g):
     store = {(s, t): Symbol(f"{s}[{t}]", REAL)
              for s, t in stl.utils.vars_in_phi(phi)}
     psi = bounds(phi, g) & phi
-    f = encode(psi, store)
-    if len(g.model.vars.env) > 0:
-        adv_vars = [smt_sym for (s, _), smt_sym in store.items()
-                    if s in g.model.vars.env]
-        sys_vars = [smt_sym for (s, _), smt_sym in store.items()
-                    if s in g.model.vars.inputs]
-        f = ForAll(adv_vars, Exists(sys_vars, f))
-    return f, store
+    return encode(psi, store), store
 
 
 GET_OP = {
@@ -85,9 +78,9 @@ def encode_and_run(g):
     f, store = sl_to_smt(phi, g)
     model = get_model(f)
     if model is None:
-        return Result(False, None, None, None)
+        return Result(False, None, None)
     solution = fn.group_by(
         ig(0), ((t, s, model[v]) for (
             s, t), v in store.items()))
     solution = fn.walk_values(lambda xs: {k: v for _, k, v in xs}, solution)
-    return Result(True, model, None, solution)
+    return Result(True, None, solution)

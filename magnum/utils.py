@@ -16,7 +16,7 @@ def project_solution_stl(sol, keys, t):
     return stl.andf(*vals)
 
 
-Result = namedtuple("Result", ["feasible", "model", "cost", "solution"])
+Result = namedtuple("Result", ["feasible", "cost", "solution"])
 
 def result_to_pandas(res):
     if res.solution is None:

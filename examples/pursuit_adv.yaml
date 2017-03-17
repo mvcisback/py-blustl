@@ -10,6 +10,8 @@ model:
   bounds:
     x_con: (-10, 10)
     x_adv: (-10, 10)
+    v_con: (-10, 10)
+    v_adv: (-10, 10)
     u: (-1, 1)
     w: (-1, 1)
 
@@ -25,10 +27,9 @@ init:
 sys:
   - name: Pursuit_Adv
     stl: "(G(x_con - x_adv <= 0.5)) & (G(x_con - x_adv >= 0.5))"
-    pri: 1
 
 dyn:
-  - stl: G(-1*x_con + x_con' + dt*v_con = 0)
-  - stl: G(-1*v_con + v_con' + dt*u = 0)
-  - stl: G(-1*x_adv + x_adv' + dt*v_adv = 0)
-  - stl: G(-1*v_adv + v_adv' + dt*w = 0)
+  - stl: G(-1*x_con' + x_con + dt*v_con = 0)
+  - stl: G(-1*v_con' + v_con + dt*u = 0)
+  - stl: G(-1*x_adv' + x_adv + dt*v_adv = 0)
+  - stl: G(-1*v_adv' + v_adv + dt*w = 0)

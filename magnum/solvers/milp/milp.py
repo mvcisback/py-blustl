@@ -68,25 +68,20 @@ def game_to_milp(g: Game, robust=True):
 
 
 def encode_and_run(g: Game, robust=True):
-
     model, store = game_to_milp(g, robust)
     status = lp.LpStatus[model.solve(lp.solvers.COIN())]
     if status in ('Infeasible', 'Unbounded'):
-        return Result(False, model, None, None)
+        return Result(False, None, None)
 
     elif status == "Optimal":
-        if robust:
-            variables = {v[0]: (k[1], k[0], v[0]) for k, v in store.items()
-                         if not isinstance(k[0], tuple)}
-        else:
-            variables = {v: (k[1], k[0], v) for k, v in store.items()
-                         if not isinstance(k[0], tuple)}
+        key = op.itemgetter(0) if robust else lambda x: x
+        symbols = {key(v): (k[1], k[0], v[0]) for k, v in store.items()
+                     if not isinstance(k[0], tuple)}
 
-        sol = filter(None, map(variables.get, model.variables()))
+        sol = (symbols[sym] for sym in model.variables() if sym in symbols)
         sol = fn.group_by(op.itemgetter(0), sol)
         sol = {t: {y[1]: y[2].value() for y in x} for t, x in sol.items()}
         cost = model.objective.value()
-        feasible = cost > 0 if robust else cost > 0
-        return Result(feasible, model, cost, sol)
+        return Result(cost > 0, cost, sol)
     else:
         raise NotImplementedError((model, status))
