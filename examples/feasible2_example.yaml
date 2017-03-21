@@ -1,14 +1,28 @@
-num_vars: 1
-num_sys_inputs: 1
-num_env_inputs: 0
-time_horizon: 2
-dt: 1
+# Model
+model:
+  time_horizon: 2
+  dt: 1
 
+  vars:
+    state: [x y]
+    input: [u]
+
+  bounds:
+    x: (0, 100)
+    y: (0, 100)
+    u: (0, 1)
+
+# Specification
+    
 init:
-- 'x0 = 0'
+  - stl: x = 0
+
 
 sys:
-- 'G[0, 2]F[0, 2](x0 > 1)'
+  - name: FooBar
+    stl: "(F(x > 5)) & (G(y > 3))"
+    pri: 1
 
 dyn:
-- "G[0, 100](x0 - 5*u0 = 0)"
+  - A: "feasible2_A.txt"
+  - B: "feasible2_B.txt"

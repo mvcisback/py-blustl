@@ -1,6 +1,7 @@
 from collections import namedtuple
 import funcy as fn
 import pandas as pd
+import numpy as np
 
 import stl
 
@@ -26,3 +27,31 @@ def result_to_pandas(res):
     data = {k: {str(k2): v2 for k2, v2 in v.items()}
             for k, v in res.solution.items()}
     return pd.DataFrame(data=data).T
+
+
+def _gen_eigs(A, B, N):
+    M = B
+    for _ in range(N):
+        yield max(abs(np.linalg.eigvals(M)))
+        M = A @ M
+
+def dynamics_lipschitz(A, B, N):
+    """
+    A: State Dynamics matrix
+    B: Control matrix
+    N: Horizon
+
+    TODO:
+    sum eigen values of:
+    A, AB, A^2B, A^3B...
+    then take 1 norm of the max eigenvalues
+
+    TODO:
+    if B is Identity, then only need to compute
+    eig(A) and take scalar powers.
+
+    TODO:
+    if A,B are positive semi-definite then just product of
+    eigenvalues.
+    """
+    return sum(_gen_eigs(A, B, N))
