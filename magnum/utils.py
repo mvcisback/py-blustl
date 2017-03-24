@@ -30,10 +30,13 @@ def result_to_pandas(res):
 
 
 def _gen_eigs(A, B, N):
-    M = B
-    for _ in range(N):
-        yield max(abs(np.linalg.eigvals(M)))
-        M = A @ M
+    if all(A.shape) and all(B.shape):
+        M = B
+        for _ in range(N):
+            yield max(abs(np.linalg.svd(M, compute_uv=False)))
+            M = A @ M
+    else:
+        yield 0
 
 def dynamics_lipschitz(A, B, N):
     """

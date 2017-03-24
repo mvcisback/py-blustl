@@ -10,11 +10,9 @@ TODO: refactor discretization
 """
 
 from functools import partial
-from collections import namedtuple, defaultdict
+from collections import namedtuple
 from math import ceil
-import pathlib
 
-import yaml
 import funcy as fn
 import sympy as sym
 from lenses import lens
@@ -26,7 +24,7 @@ Specs = namedtuple("Specs", "sys env init dyn learned")
 Game = namedtuple("Game", "spec model meta")
 Model = namedtuple("Model", "dt N vars bounds t")
 Vars = namedtuple("Vars", "state input env")
-Meta = namedtuple("Meta", "pri names")  # TODO populate
+Meta = namedtuple("Meta", "pri names dxdu dxdw drdx")
 
 
 def game_to_stl(g: Game) -> STL:
@@ -119,7 +117,7 @@ def _stl_to_lra(phi, *, curr_len, discretize):
     return phi
 
 
-def set_time(*, t, dt=stl.dt_sym, tl=None, phi=None):
+def set_time(*, t=stl.t_sym, dt=stl.dt_sym, tl=None, phi=None):
     if tl is None:
         tl = stl.terms_lens(phi)
     focus = tl.tuple_(lens().time, lens().coeff).each_()
@@ -130,49 +128,3 @@ def set_time(*, t, dt=stl.dt_sym, tl=None, phi=None):
         return x
 
     return focus.modify(_set_time)
-
-
-def from_yaml(path) -> Game:
-    if isinstance(path, (str, pathlib.Path)):
-        with pathlib.Path(path).open("r") as f:
-            g = defaultdict(list, yaml.load(f))
-    else:
-        g = defaultdict(list, yaml.load(f))
-
-    # Parse Specs and Meta
-    spec_types = ["sys", "env", "init", "dyn"]
-    spec_map = {k: [] for k in spec_types}
-    pri_map = {}
-    name_map = {}
-    dt = float(g['model']['dt'])
-    steps = int(ceil(int(g['model']['time_horizon']) / dt))
-
-    for kind in spec_types:
-        for spec in g[kind]:
-            p = stl.parse(spec['stl'], H=steps)
-            name_map[p] = spec.get('name')
-            pri_map[p] = spec.get('pri')
-            spec_map[kind].append(p)
-    spec_map = fn.walk_values(lambda x: stl.andf(*x), spec_map)
-    spec_map['learned'] = stl.TOP
-    spec = Specs(**spec_map)
-    meta = Meta(pri_map, name_map)
-
-    # Parse Model
-    stl_var_map = fn.merge({
-        'input': [],
-        'state': [],
-        'env': []
-    }, g['model']['vars'])
-    stl_var_map['input'] = list(map(sym.Symbol, stl_var_map['input']))
-    stl_var_map['state'] = list(map(sym.Symbol, stl_var_map['state']))
-    stl_var_map['env'] = list(map(sym.Symbol, stl_var_map['env']))
-
-    bounds = {k: v.split(",") for k, v in g["model"]["bounds"].items()}
-    bounds = {
-        k: (float(v[0][1:]), float(v[1][:-1]))
-        for k, v in bounds.items()
-    }
-    model = Model(dt=dt, N=steps, vars=Vars(**stl_var_map), bounds=bounds, t=0)
-
-    return Game(spec=spec, model=model, meta=meta)

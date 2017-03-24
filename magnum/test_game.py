@@ -1,10 +1,11 @@
+from magnum import parse
 from magnum import game
 from magnum import mpc
 
 from nose2.tools import params
 import unittest
 
-g = game.from_yaml("examples/feasible_example.yaml")
+g = parse.from_yaml("examples/feasible_example.yaml")
 
 
 class TestGame(unittest.TestCase):
