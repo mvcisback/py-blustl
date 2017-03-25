@@ -8,18 +8,58 @@ import magnum
 from magnum.solvers.milp import encode_and_run as predict
 from magnum.utils import project_solution_stl
 
+from enum import Enum, auto
+
+class CegisState(Enum):
+    INITIAL_LOOP = auto()
+    U_DOMINANT = auto()
+    W_DOMINANT = auto()
+    W_NOT_DOMINANT = auto()
+    U_NOT_DOMINANT = auto()
+    MAYBE_REACTIVE = auto() 
+
 
 def cegis(g):
-    return fn.last(cegis_loop(g))
+    response, state = fn.last(cegis_loop(g))
+    return state if state == CegisState.U_DOMINANT else None
 
+
+def update_state(response, is_p1, converged, state):
+    """CEGIS State Machine"""
+    if not response.feasible:
+        if is_p1:
+            return CegisState.W_DOMINANT
+        else:
+            return CegisState.U_DOMINANT
+    elif converged:
+        if is_p1:
+            if state == W_NOT_DOMINANT:
+                return CegisState.MAYBE_REACTIVE
+            else:
+                return CegisState.U_NOT_DOMINANT
+        else:
+            if state == U_NOT_DOMINANT:
+                return CegisState.MAYBE_REACTIVE
+            else:
+                return CegisState.W_NOT_DOMINANT
+    else:
+        return state
+
+
+TERMINATION_STATES = {
+    CegisState.MAYBE_REACTIVE, 
+    CegisState.W_DOMINANT,
+    CegisState.U_DOMINANT
+}
+    
 
 def cegis_loop(g):
     """CEGIS for dominant/robust strategy.
     ∃u∀w . (x(u, w, t), u, w) ⊢ φ
     """
     # Create player for sys and env resp.
-    p1 = player(g, is_sys=True)
-    p2 = player(magnum.game.invert_game(g), is_sys=False)
+    p1 = player(g)
+    p2 = player(magnum.game.invert_game(g))
 
     # Start Co-Routines
     next(p1)
@@ -27,31 +67,34 @@ def cegis_loop(g):
 
     # Take turns providing counter examples
     response = set()
+    state = CegisState.INITIAL_LOOP
     for p in cycle([p1, p2]):
         # Tell p about previous response and get p's response.
-        response = p.send(response)
-        yield response  # generator for monitoring/testing
+        response, converged = p.send(response)
 
-        # p failed to respond, thus the game ends.
-        if not response.feasible:
-            return None if p == p1 else response.solution
+        # Update State
+        state = update_state(response, p == p1, converged, state)
+            
+        yield response, state
+
+        if state in TERMINATION_STATES:
+            break
 
 
-def player(g, is_sys=True):
+def player(g):
     """Player co-routine.
-    Receives counter example and then returns response. Remembers
-    previous inputs that the adv responded to and won't play them
-    again.
+    Receives counter example and then returns response. 
     """
+    converged = False
+    learned_lens = lens(g).spec.learned
     inputs, adv_inputs = g.model.vars.input, g.model.vars.env
-    counter_example = yield
 
+    counter_example = yield
     # We must be the first player. Give unconstrained response.
     if not counter_example:
-        counter_example = yield predict(g)
+        counter_example = yield predict(g), converged
     banned_inputs = set()
 
-    learned_lens = lens(g).spec.learned
     while True:
         # They gave a response w, we cannot use previous solutions.
         sol = counter_example.solution
@@ -64,14 +107,12 @@ def player(g, is_sys=True):
         # Step 2) respond to w's response.
         learned = response & ~stl.orf(*banned_inputs)
         prediction = predict(learned_lens.set(learned))
-
-        # Step 3) If not the system, need to consider old inputs
-        # upon failure
-        # TODO: bench mark if it's better to relax problem
-        # or constrained problem
-        if not prediction.feasible and not is_sys:
+            
+        # Step 3) Consider old inputs upon failure
+        if not prediction.feasible:
+            converged = True
             learned = response & stl.orf(*banned_inputs)
             prediction = predict(learned_lens.set(learned))
 
         # Step 4) Yield response
-        counter_example = yield prediction
+        counter_example = yield prediction, converged
