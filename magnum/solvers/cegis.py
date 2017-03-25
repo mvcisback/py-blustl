@@ -26,8 +26,8 @@ TERMINATION_STATES = {
 }
 
 def cegis(g):
-    terminate = lambda x: x[1] in TERMINATION_STATES
-    response, state = fn.first(filter(termination_states, cegis_loop(g)))
+    converged = lambda x: x[1] in TERMINATION_STATES
+    response, state = fn.first(filter(converged, cegis_loop(g)))
     return state if state == CegisState.U_DOMINANT else None
 
 
@@ -78,9 +78,22 @@ def cegis_loop(g):
         yield response, state
 
 
+def banned_square(prev_input, cost, g):
+    if g.meta.dxdu == 0:
+        return prev_input
+
+    R = cost/g.meta.dxdu
+    delta = R - prev_input.const
+    lower = lens(lens(prev_input).op.set("<")).const.set(delta)
+    upper = lens(lens(prev_input).op.set(">")).const.set(-delta)
+    return lower & upper
+
+
 def player(g):
     """Player co-routine.
     Receives counter example and then returns response. 
+
+    TODO: Also converge if have epslion convering of space
     """
     converged = False
     learned_lens = lens(g).spec.learned
@@ -90,26 +103,28 @@ def player(g):
     # We must be the first player. Give unconstrained response.
     if not counter_example:
         counter_example = yield predict(g), converged
-    banned_inputs = set()
-
+    banned_inputs = stl.BOT
     while True:
         # They gave a response w, we cannot use previous solutions.
         sol = counter_example.solution
-        prev_input = project_solution_stl(sol, inputs, g.model.t)
-        response = project_solution_stl(sol, adv_inputs, g.model.t)
+        cost = counter_example.cost
+        prev_inputs = project_solution_stl(sol, inputs, g.model.t)
+        response = stl.andf(*project_solution_stl(sol, adv_inputs, g.model.t))
         # Step 1) prev input had counter strategy, so ban it.
-        if prev_input is not stl.TOP:
-            banned_inputs.add(prev_input)
+        if prev_inputs:
+            banned = (banned_square(i, cost, g) for i in prev_inputs)
+            banned_inputs |= stl.andf(*banned)
 
         # Step 2) respond to w's response.
-        learned = response & ~stl.orf(*banned_inputs)
+        learned = response & ~banned_inputs
         prediction = predict(learned_lens.set(learned))
             
         # Step 3) Consider old inputs upon failure
         if not prediction.feasible:
             converged = True
-            learned = response & stl.orf(*banned_inputs)
-            prediction = predict(learned_lens.set(learned))
+            if banned_inputs is not stl.BOT:
+                learned = response & banned_inputs
+                prediction = predict(learned_lens.set(learned))
 
         # Step 4) Yield response
         counter_example = yield prediction, converged

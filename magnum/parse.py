@@ -50,7 +50,7 @@ def matrix_to_dyn_stl(A, B, C, model):
         return stl.LinEq(terms, "=", 0)
     
     dyn_constrs = (row_to_stl(i, row) for i, row in enumerate(zip(A, B, C)))
-    return stl.andf(*dyn_constrs)
+    return stl.alw(stl.andf(*dyn_constrs), lo=0, hi=model.N)
 
 
 

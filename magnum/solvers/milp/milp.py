@@ -76,7 +76,7 @@ def encode_and_run(g: Game, robust=True):
     elif status == "Optimal":
         key = op.itemgetter(0) if robust else lambda x: x
         symbols = {key(v): (k[1], k[0], v[0]) for k, v in store.items()
-                   if not isinstance(k[0], tuple)}
+                   if not isinstance(k[0], tuple) and not isinstance(k, stl.LinEq)}
 
         sol = (symbols[sym] for sym in model.variables() if sym in symbols)
         sol = fn.group_by(op.itemgetter(0), sol)

@@ -33,10 +33,17 @@ def game_to_stl(g: Game) -> STL:
 
 
 def invert_game(g):
+    # Swap Spec
     g2 = lens(g).spec.env.set(stl.TOP)
     g2 = lens(g2).spec.sys.set(g.spec.env & ~g.spec.sys)
+
+    # Swap Inputs
     g2 = lens(g2).model.vars.env.set(g.model.vars.input)
     g2 = lens(g2).model.vars.input.set(g.model.vars.env)
+
+    # Swap Dynamics Bounds
+    g2 = lens(g2).meta.dxdu.set(g.meta.dxdw)
+    g2 = lens(g2).meta.dxdw.set(g.meta.dxdu)
     return g2
 
 
