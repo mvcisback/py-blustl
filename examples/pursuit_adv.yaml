@@ -3,7 +3,7 @@ model:
   dt: 1
 
   vars:
-    state: [x_con v_con x_adv v_adv]
+    state: [x_con, v_con, x_adv, v_adv]
     input: [u]
     env: [w]
 
