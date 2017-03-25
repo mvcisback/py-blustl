@@ -19,8 +19,15 @@ class CegisState(Enum):
     MAYBE_REACTIVE = auto() 
 
 
+TERMINATION_STATES = {
+    CegisState.MAYBE_REACTIVE, 
+    CegisState.W_DOMINANT,
+    CegisState.U_DOMINANT
+}
+
 def cegis(g):
-    response, state = fn.last(cegis_loop(g))
+    terminate = lambda x: x[1] in TERMINATION_STATES
+    response, state = fn.first(filter(termination_states, cegis_loop(g)))
     return state if state == CegisState.U_DOMINANT else None
 
 
@@ -44,13 +51,6 @@ def update_state(response, is_p1, converged, state):
                 return CegisState.W_NOT_DOMINANT
     else:
         return state
-
-
-TERMINATION_STATES = {
-    CegisState.MAYBE_REACTIVE, 
-    CegisState.W_DOMINANT,
-    CegisState.U_DOMINANT
-}
     
 
 def cegis_loop(g):
@@ -76,9 +76,6 @@ def cegis_loop(g):
         state = update_state(response, p == p1, converged, state)
             
         yield response, state
-
-        if state in TERMINATION_STATES:
-            break
 
 
 def player(g):
