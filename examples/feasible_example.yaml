@@ -12,15 +12,16 @@ model:
     u: (0, 1)
 
 # Specification
-    
-init:
-  - stl: x = 0
 
+context:
+  - name: Init
+    stl: x = 0
 
-sys:
-  - name: FooBar
+  - name: ReachFive
     stl: "F(x > 5)"
-    pri: 1
+    
+spec:
+  - stl: "(Init) & (ReachFive)"
 
 dyn:
   - stl: G(x + -1*x' + dt*5*u = 0)

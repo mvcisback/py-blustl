@@ -17,8 +17,8 @@ def z(x: "SL", i: int, g: Game):
     else:
         prefix = "z"
     kwargs = {"name": "{}{}".format(prefix, i)}
-    if str(x[0]) in g.model.bounds:
-        lo, hi = g.model.bounds.get(str(x[0]))
+    if x[0] in g.model.bounds:
+        lo, hi = g.model.bounds.get(x[0])
         kwargs = {"lowBound": lo, "upBound": hi, "name": f"{x[0]}_{x[1]}"}
     return lp.LpVariable(cat=cat.value, **kwargs)
 

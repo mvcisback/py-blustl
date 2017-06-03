@@ -14,8 +14,8 @@ M = 1000  # TODO
 def z(x: "SL", i: int, g: Game):
     # TODO: come up with better function name
     kwargs = {"name": f"r{i}"}
-    if str(x[0]) in g.model.bounds:
-        lo, hi = g.model.bounds.get(str(x[0]))
+    if x[0] in g.model.bounds:
+        lo, hi = g.model.bounds.get(x[0])
         kwargs = {"lowBound": lo, "upBound": hi, "name": f"{x[0]}_{x[1]}"}
     r_var = lp.LpVariable(cat=C.Real.value, **kwargs)
 

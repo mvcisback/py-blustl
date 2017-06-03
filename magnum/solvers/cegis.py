@@ -89,6 +89,16 @@ def banned_square(prev_input, cost, g):
     return lower & upper
 
 
+def milp_banned_square(prev_input, cost, g):
+    # TODO: encode milp for following problem
+    # Minimize Radius R
+    # s.t
+    # R >= cost/g.meta.dxdu
+    # |u - u'|_inf < R
+    # r(u, w') >= 0
+    return 0
+
+
 def player(g):
     """Player co-routine.
     Receives counter example and then returns response. 

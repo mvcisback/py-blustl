@@ -23,7 +23,7 @@ def result_to_pandas(res):
     if res.solution is None:
         return None
 
-    data = {k: {str(k2): v2 for k2, v2 in v.items()}
+    data = {k: {str(k2): float(v2) for k2, v2 in v.items()}
             for k, v in res.solution.items()}
     return pd.DataFrame(data=data).T
 
@@ -57,3 +57,40 @@ def dynamics_lipschitz(A, B, N):
     eigenvalues.
     """
     return sum(_gen_eigs(A, B, N))
+
+
+def pretty_print(g):
+    dynamics_str = "\n       ∧  ".join(map(str, g.spec.dyn.children()))
+    phi = (~g.spec.env | g.spec.sys) & g.spec.init
+    spec_str = "\n   ∧  ".join(map(str, phi.children()))
+    print(f"""
+Specification
+=============
+spec: {spec_str}
+learned: {g.spec.learned}
+dynamics: {dynamics_str}
+
+MODEL
+=====
+dt: {g.model.dt}, N: {g.model.N} t: {g.model.t}
+
+States:
+------
+{g.model.vars.state}
+
+Inputs:
+------
+{[(u, g.model.bounds[u]) for u in g.model.vars.input]}
+
+Environment Inputs:
+------------------
+{[(u, g.model.bounds[u]) for u in g.model.vars.env]}
+
+
+Meta:
+dxdu: {g.meta.dxdu}, dxdw: {g.meta.dxdw}, drdx: {g.meta.drdx}
+""")
+
+
+def to_yaml(g):
+    raise NotImplementedError()

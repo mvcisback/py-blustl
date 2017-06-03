@@ -13,10 +13,11 @@ from magnum.utils import Result
 
 
 def _bounds(phi, g):
-    vars_ = [stl.Var(1, s, t) for s, t in stl.utils.vars_in_phi(phi)]
+    vars_ = [stl.Var(1, s, t) for s, t in stl.utils.vars_in_phi(phi)
+             if s in g.model.bounds]
     for i, ineq in enumerate((">=", "<=")):
         to_lineq = lambda v: stl.LinEq(
-            (v,), ineq, g.model.bounds[str(v.id)][i])
+            (v,), ineq, g.model.bounds[v.id][i])
         yield from map(to_lineq, vars_)
 
 

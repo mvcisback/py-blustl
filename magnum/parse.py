@@ -29,7 +29,7 @@ def parse_model(g):
 
     bounds = {k: v.split(",") for k, v in g["model"]["bounds"].items()}
     bounds = {
-        k: (float(v[0][1:]), float(v[1][:-1]))
+        sym.Symbol(k): (float(v[0][1:]), float(v[1][:-1]))
         for k, v in bounds.items()
     }
     steps = int(ceil(int(g['model']['time_horizon']) / dt))
@@ -106,9 +106,9 @@ def parse_dynamics(g, model):
 
 def parse_specs(g, model):
     # Parse Specs and Meta
-    # TODO: handle parsing dynamics
-    spec_types = ["sys", "env", "init"]
-    spec_map = {k: [] for k in spec_types}
+    # TODO: Implement context
+    spec_types = ["spec", "learned", "context"]
+    spec_map = {k: stl.TOP for k in spec_types}
     pri_map = {}
     name_map = {}
     for kind in spec_types:
@@ -116,15 +116,12 @@ def parse_specs(g, model):
             p = stl.parse(spec['stl'], H=model.N)
             name_map[p] = spec.get('name')
             pri_map[p] = spec.get('pri')
-            spec_map[kind].append(p)
+            spec_map[kind] &= p
 
     dyn, dxdu, dxdw = parse_dynamics(g["dyn"], model)
-
-    spec_map = fn.walk_values(lambda x: stl.andf(*x), spec_map)
     spec_map['dyn'] = dyn
-    spec_map['learned'] = stl.TOP
+    import ipdb; ipdb.set_trace()
     spec = Specs(**spec_map)
-
     drdx = stl.utils.linear_stl_lipschitz((~spec.env) | spec.sys)
     meta = Meta(pri_map, name_map, dxdu, dxdw, drdx)
 

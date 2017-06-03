@@ -20,7 +20,7 @@ from lenses import lens
 import stl
 from stl import STL
 
-Specs = namedtuple("Specs", "sys env init dyn learned")
+Specs = namedtuple("Specs", "obj dyn learned")
 Game = namedtuple("Game", "spec model meta")
 Model = namedtuple("Model", "dt N vars bounds t")
 Vars = namedtuple("Vars", "state input env")
@@ -28,14 +28,12 @@ Meta = namedtuple("Meta", "pri names dxdu dxdw drdx")
 
 
 def game_to_stl(g: Game) -> STL:
-    phi = g.spec.sys | ~g.spec.env
-    return phi & g.spec.dyn & g.spec.learned & g.spec.init
+    return g.obj & g.spec.dyn & g.spec.learned
 
 
 def invert_game(g):
     # Swap Spec
-    g2 = lens(g).spec.env.set(stl.TOP)
-    g2 = lens(g2).spec.sys.set(g.spec.env & ~g.spec.sys)
+    g2 = lens(g2).spec.obj.set(~g.spec.obj)
 
     # Swap Inputs
     g2 = lens(g2).model.vars.env.set(g.model.vars.input)

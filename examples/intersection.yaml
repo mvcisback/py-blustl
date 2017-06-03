@@ -8,10 +8,6 @@ model:
     env: [w]
 
   bounds:
-    x: (-100, 100)
-    vx: (-100, 100)
-    y: (-100, 100)
-    vy: (-100, 100)
     u: (0, 1)
     w: (0, 1)
 
@@ -26,15 +22,15 @@ env:
   # Almost obeys speed limit
   - stl: 'G(vy < 10.1)'
   # No reversing
-  - stl: 'G(vy >= 0)'
+  - stl: 'G(vy >= 10)'
   # Doesn't park in intersection
-  - stl: 'GF[0, 1]((y < 0) | (y > 5))'
+  - stl: 'F(y > 10)'
   
 sys:
   # Pass intersection
   - stl: 'F(x > 5)'
   # Don't crash
-  - stl: 'G(((x < 0) | (x > 5)) | ((y < 0) | (y > 5)))'
+  - stl: 'G(((x > 0) & (x > 5)) -> ((y < 0) | (y > 5)))'
   # Obey speed limit
   - stl: 'G(vx <= 10)'
   # No reversing
