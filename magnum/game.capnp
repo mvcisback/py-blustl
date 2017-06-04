@@ -6,14 +6,11 @@ struct Game {
     meta @2 :MetaData;
 
     struct Specs {
-        objectives @0 :List(Spec);
+        objective @0 :Spec;
         dynamics @1 :List(Spec);
 
         # Learned Lemmas
         learned @2 :List(Spec);
-
-        # AP -> Spec Association
-        context @3 :List(Spec);
 
         struct Spec {
             name @0 :Text;
@@ -27,14 +24,14 @@ struct Game {
         horizon @1 :Float64;
 
         state @2 :List(Var);
-        input @3 :List(Var);
-        environment_input @4 :List(Var);
-        current_time_step @5 :UInt64;
+        inputs @3 :List(Var);
+        environmentInput @4 :List(Var);
+        currentTimeStep @5 :UInt64;
 
         struct Var {
            name @0 :Text;
-           low_bound @1 :Float64;
-           upper_bound @1 :Float64;
+           lowerBound @1 :Float64;
+           upperBound @2 :Float64;
         }
     }
 

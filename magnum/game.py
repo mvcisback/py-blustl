@@ -21,10 +21,17 @@ import stl
 from stl import STL
 
 Specs = namedtuple("Specs", "obj dyn learned")
-Game = namedtuple("Game", "spec model meta")
 Model = namedtuple("Model", "dt N vars bounds t")
 Vars = namedtuple("Vars", "state input env")
 Meta = namedtuple("Meta", "pri names dxdu dxdw drdx")
+
+
+class Game(namedtuple("_Game", "spec model meta")):
+    __slots__ = ()
+
+    def __new__(cls, spec, model, meta):
+        self = super(cls, Game).__new__(cls, spec, model, meta)
+        return self
 
 
 def game_to_stl(g: Game) -> STL:
