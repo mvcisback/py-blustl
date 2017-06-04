@@ -19,7 +19,12 @@ model = G.Model(
         Symbol("x"): (0, 100),
         Symbol("u"): (0, 1),
     },
-    t=0
+    t=0,
+    dyn=G.Dynamics(
+        A=[[0]],
+        B=[[5]],
+        C=[]
+    )
 )
 
 # Setup the specificatoion
@@ -31,7 +36,6 @@ context = {
 
 spec = G.Specs(
     obj=stl.utils.inline_context(stl.parse("(Init) & (ReachFive)"), context),
-    dyn=[stl.parse("G(x + -1*x' + dt*5*u = 0)")],
     learned=[]
 )
 

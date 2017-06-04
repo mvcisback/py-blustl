@@ -7,10 +7,9 @@ struct Game {
 
     struct Specs {
         objective @0 :Spec;
-        dynamics @1 :List(Spec);
 
         # Learned Lemmas
-        learned @2 :List(Spec);
+        learned @1 :List(Spec);
 
         struct Spec {
             name @0 :Text;
@@ -27,11 +26,22 @@ struct Game {
         inputs @3 :List(Var);
         environmentInput @4 :List(Var);
         currentTimeStep @5 :UInt64;
+        dynamics @6 :Dynamics;
+
 
         struct Var {
            name @0 :Text;
            lowerBound @1 :Float64;
            upperBound @2 :Float64;
+        }
+
+        struct Dynamics {
+           # x' = x + dt*(Ax + Bu + Cw)
+           # Currently done as a dense list.
+           # TODO: add option for sparse encoding.           
+           aMatrix @0 :List(List(Float64));
+           bMatrix @1 :List(List(Float64));
+           cMatrix @2 :List(List(Float64));
         }
     }
 

@@ -20,8 +20,9 @@ from lenses import lens
 import stl
 from stl import STL
 
-Specs = namedtuple("Specs", "obj dyn learned")
-Model = namedtuple("Model", "dt N vars bounds t")
+Specs = namedtuple("Specs", "obj learned")
+Model = namedtuple("Model", "dt N vars bounds t dyn")
+Dynamics = namedtuple("Dynamics", "A B C")
 Vars = namedtuple("Vars", "state input env")
 Meta = namedtuple("Meta", "pri names dxdu dxdw drdx")
 
@@ -35,7 +36,7 @@ class Game(namedtuple("_Game", "spec model meta")):
 
 
 def game_to_stl(g: Game) -> STL:
-    return g.obj & g.spec.dyn & g.spec.learned
+    return g.obj & g.spec.learned
 
 
 def invert_game(g):
