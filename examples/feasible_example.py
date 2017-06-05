@@ -53,6 +53,3 @@ meta = G.Meta(
 
 feasible_example = G.Game(spec=spec, model=model, meta=meta)
 
-if __name__ == '__main__':
-    with open("feasible_example.bin", "wb") as f:
-        io.write(feasible_example, f)
