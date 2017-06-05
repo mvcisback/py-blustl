@@ -44,7 +44,7 @@ def game_to_stl(g: Game) -> STL:
 
 def invert_game(g):
     # Swap Spec
-    g2 = lens(g2).spec.obj.set(~g.spec.obj)
+    g2 = lens(g).spec.obj.set(~g.spec.obj)
 
     # Swap Inputs
     g2 = lens(g2).model.vars.env.set(g.model.vars.input)

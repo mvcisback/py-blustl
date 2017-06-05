@@ -32,8 +32,8 @@ model = G.Model(
             [0, 0, 0, 1],
             [0, 0, 0, 0]
         ]),
-        B=np.array([0, 10, 0, 0]).T,
-        C=np.array([0, 0, 0, 10]).T,
+        B=np.array([0, 10, 0, 0]).reshape((4,1)),
+        C=np.array([0, 0, 0, 10]).reshape((4,1)),
     )
 )
 
@@ -65,6 +65,8 @@ context = {
     parse("noReversing"): parse("G(vx >= 0)"),
     parse("G"): parse(
         "(goal) & (dontCrash) & (obeySpeedLimitX) & (noReversing)"),
+
+    # Spec
     parse("spec"): parse("(A) -> (G)")
 
 }
@@ -78,11 +80,10 @@ spec = G.Specs(
 meta = G.Meta(
     pri={},
     names={},
-    dxdu=None,
-    dxdw=None,
-    drdx=None
+    dxdu=float('inf'),
+    dxdw=float('inf'),
+    drdx=float('inf')
 )
 
 
 intersection = G.Game(spec=spec, model=model, meta=meta)
-
