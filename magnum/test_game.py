@@ -1,11 +1,13 @@
 from magnum import parse
 from magnum import game
 from magnum import mpc
+from magnum import io
 
 from nose2.tools import params
 import unittest
 
-g = parse.from_yaml("examples/feasible_example.yaml")
+with open("examples/feasible_example.bin", "rb") as f:
+    g = io.load(f)
 
 
 class TestGame(unittest.TestCase):

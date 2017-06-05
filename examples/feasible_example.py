@@ -5,6 +5,8 @@ from sympy import Symbol
 from magnum import game as G
 from magnum import io
 
+import numpy as np
+
 ## Setup the Model
 
 model = G.Model(
@@ -21,9 +23,9 @@ model = G.Model(
     },
     t=0,
     dyn=G.Dynamics(
-        A=[[0]],
-        B=[[5]],
-        C=[]
+        A=np.array([[0]]),
+        B=np.array([[5]]),
+        C=np.array([[]])
     )
 )
 
@@ -49,12 +51,8 @@ meta = G.Meta(
 )
 
 
-game = G.Game(spec=spec, model=model, meta=meta)
-
-
-def main():
-    print(io.to_capnp_game(game))
-
+feasible_example = G.Game(spec=spec, model=model, meta=meta)
 
 if __name__ == '__main__':
-    main()
+    with open("feasible_example.bin", "wb") as f:
+        io.write(feasible_example, f)

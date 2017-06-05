@@ -1,12 +1,14 @@
 from magnum import parse
 from magnum import utils
 from magnum import game
+from magnum import io
 import numpy as np
 
 #from nose2.tools import params
 import unittest
 
-g = parse.from_yaml("examples/feasible_example.yaml")
+with open("examples/feasible_example.bin", "rb") as f:
+    g = io.load(f)
 
 class TestGame(unittest.TestCase):
     def test_dynamics_lipschitz(self):

@@ -3,7 +3,10 @@ import unittest
 
 import magnum
 from magnum.solvers import smt
+from magnum import io
 
+with open("examples/feasible_example.bin", "rb") as f:
+    g = io.load(f)
 
 class TestSMT(unittest.TestCase):
 

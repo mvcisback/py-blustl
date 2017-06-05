@@ -111,9 +111,9 @@ def to_capnp_model(g):
         environmentInput=[to_capnp_var(g, x) for x in g.model.vars.env],
         currentTimeStep=g.model.t,
         dynamics=Dynamics.new_message(
-            aMatrix=g.model.dyn.A,
-            bMatrix=g.model.dyn.B,
-            cMatrix=g.model.dyn.C,
+            aMatrix=g.model.dyn.A.tolist(),
+            bMatrix=g.model.dyn.B.tolist(),
+            cMatrix=g.model.dyn.C.tolist(),
         )
     )
 

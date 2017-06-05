@@ -22,11 +22,14 @@ from stl import STL
 
 Specs = namedtuple("Specs", "obj learned")
 Model = namedtuple("Model", "dt N vars bounds t dyn")
-Dynamics = namedtuple("Dynamics", "A B C")
 Vars = namedtuple("Vars", "state input env")
 Meta = namedtuple("Meta", "pri names dxdu dxdw drdx")
 
+# x' = x + dt*(Ax + Bu + Cw)
+Dynamics = namedtuple("Dynamics", "A B C")
 
+
+# TODO: Make a more convenient constructor
 class Game(namedtuple("_Game", "spec model meta")):
     __slots__ = ()
 
@@ -141,3 +144,21 @@ def set_time(*, t=stl.t_sym, dt=stl.dt_sym, tl=None, phi=None):
         return x
 
     return focus.modify(_set_time)
+
+
+def matrix_to_dyn_stl(g):
+    """TODO: cleanup"""
+    def to_terms(row, syms, t=stl.t_sym):
+        return [stl.Var(c, s, t) for s, c in zip(syms, row) if c != 0]
+
+    model, (A, B, C) = g.model, g.model.dyn
+    def row_to_stl(i, row):
+        a_row, b_row, c_row = row
+        terms = to_terms(a_row, model.vars.state)
+        terms += to_terms(b_row, model.vars.input)
+        terms += to_terms(c_row, model.vars.env)
+        terms.append(stl.Var(-1, model.vars.state[i], stl.t_sym + model.dt))
+        return stl.LinEq(terms, "=", 0)
+    
+    dyn_constrs = (row_to_stl(i, row) for i, row in enumerate(zip(A, B, C)))
+    return stl.alw(stl.andf(*dyn_constrs), lo=0, hi=model.N)
