@@ -147,7 +147,6 @@ def set_time(*, t=stl.t_sym, dt=stl.dt_sym, tl=None, phi=None):
 
 
 def matrix_to_dyn_stl(g):
-    """TODO: cleanup"""
     def to_terms(row, syms, t=stl.t_sym):
         return [stl.Var(c, s, t) for s, c in zip(syms, row) if c != 0]
 
@@ -158,7 +157,7 @@ def matrix_to_dyn_stl(g):
         terms += to_terms(b_row, model.vars.input)
         terms += to_terms(c_row, model.vars.env)
         terms.append(stl.Var(-1, model.vars.state[i], stl.t_sym + model.dt))
-        return stl.LinEq(terms, "=", 0)
+        return stl.LinEq(tuple(terms), "=", 0)
     
     dyn_constrs = (row_to_stl(i, row) for i, row in enumerate(zip(A, B, C)))
     return stl.alw(stl.andf(*dyn_constrs), lo=0, hi=model.N)

@@ -33,12 +33,12 @@ model = G.Model(
 
 context = {
     stl.parse("Init"): stl.parse("x = 0"),
-    stl.parse("ReachFive"): stl.parse("F(x > 5)"),
+    stl.parse("ReachFive"): stl.parse("F(x > 5)", H=model.N),
 }
 
 spec = G.Specs(
     obj=stl.utils.inline_context(stl.parse("(Init) & (ReachFive)"), context),
-    learned=[]
+    learned=stl.TOP
 )
 
 

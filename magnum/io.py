@@ -26,8 +26,9 @@ oo = float('inf')
 
 def load_specs(g):
     return game.Specs(
-        obj=stl.parse(g.specs.objective.text),
-        learned=[stl.parse(x.text) for x in g.specs.learned],
+        obj=stl.parse(g.specs.objective.text, H=g.model.horizon),
+        learned=stl.andf(*[stl.parse(x.text, H=g.model.horizon) for x in
+                           g.specs.learned]),
     )
 
 
@@ -57,9 +58,9 @@ def load_metadata(g):
         dxdu=g.meta.dxdu,
         dxdw=g.meta.dxdw,
         drdx=g.meta.drdx,
-        pri={stl.parse(x.text): x.priority for x in
+        pri={stl.parse(x.text, H=g.model.horizon): x.priority for x in
              chain([g.specs.objective], g.specs.learned) if x.priority != 0},
-        names={stl.parse(x.text): x.name for x in
+        names={stl.parse(x.text, H=g.model.horizon): x.name for x in
                chain([g.specs.objective], g.specs.learned) if x.name != ""},
     )
 
@@ -89,7 +90,7 @@ def to_capnp_spec(g, phi, name=None):
 def to_capnp_specs(g):
     return Specs.new_message(
         objective=to_capnp_spec(g, g.spec.obj),
-        learned=[to_capnp_spec(g, x) for x in g.spec.learned],
+        learned=[to_capnp_spec(g, x) for x in g.spec.learned.children()],
     )
 
 
@@ -124,6 +125,7 @@ def to_capnp_metadata(g):
         dxdw=oo if g.meta.dxdw is None else g.meta.dxdw,
         drdx=oo if g.meta.drdx is None else g.meta.drdx
     )
+
 
 def to_capnp_game(g):
     return Game.new_message(

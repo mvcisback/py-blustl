@@ -17,7 +17,7 @@ import funcy as fn
 from funcy import cat, compose
 
 import stl
-from magnum.game import Game
+from magnum.game import Game, matrix_to_dyn_stl, discretize_stl
 from magnum.constraint_kinds import Kind as K
 from magnum.utils import Result
 from magnum.solvers.milp import boolean_encoding as bool_encode
@@ -44,8 +44,9 @@ def game_to_milp(g: Game, robust=True):
 
     model = lp.LpProblem(DEFAULT_NAME, lp.LpMaximize)
 
-    spec = ~g.spec.env | g.spec.sys
-    phis = [spec] + list(g.spec[2:])
+    spec = g.spec.obj
+    dyn = discretize_stl(matrix_to_dyn_stl(g), g.model)
+    phis = [spec, dyn, g.spec.learned]
     phis = [x for x in phis if x not in (stl.TOP, stl.BOT)]
 
     lp_vars = set.union(*(set(stl.utils.vars_in_phi(phi)) for phi in phis))
