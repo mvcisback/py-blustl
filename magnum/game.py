@@ -14,14 +14,16 @@ from collections import namedtuple
 from math import ceil
 
 import funcy as fn
+import numpy as np
 import sympy as sym
 from lenses import lens
+
 
 import stl
 from stl import STL
 
-Specs = namedtuple("Specs", "obj learned")
-Model = namedtuple("Model", "dt N vars bounds t dyn")
+Specs = namedtuple("Specs", "obj init learned bounds")
+Model = namedtuple("Model", "dt H vars t dyn")
 Vars = namedtuple("Vars", "state input env")
 Meta = namedtuple("Meta", "pri names dxdu dxdw drdx")
 
@@ -39,7 +41,8 @@ class Game(namedtuple("_Game", "spec model meta")):
 
 
 def game_to_stl(g: Game) -> STL:
-    return g.obj & g.spec.learned
+    dyn = matrix_to_dyn_stl(g)
+    return g.spec.obj & g.spec.learned & g.spec.init & g.spec.bounds & dyn
 
 
 def invert_game(g):
@@ -77,7 +80,7 @@ def discretize_stl(phi: STL, m: Model) -> "LRA":
     psi = set_time(t=0, dt=m.dt, tl=focus.bind(psi).terms.each_())
 
     # Type cast time to int (and forget about sympy stuff)
-    psi = focus.bind(psi).terms.each_().time.modify(int)
+    psi = focus.bind(psi).terms.each_().time.modify(float)
     psi = focus.bind(psi).terms.each_().coeff.modify(float)
 
     # Drop terms from time < 0
@@ -85,14 +88,11 @@ def discretize_stl(phi: STL, m: Model) -> "LRA":
     return stl.and_or_lens(psi).args.modify(filter_none)
 
 
-def step(t: float, dt: float) -> int:
-    return int(t / dt)
-
-
 def discretize(interval: stl.Interval, m: Model):
-    f = lambda x: min(step(x, dt=m.dt), m.N)
     t_0, t_f = interval
-    return range(f(t_0), f(t_f) + 1)
+    while t_0 <= t_f:
+        yield t_0
+        t_0 += m.dt
 
 
 def stl_to_lra(phi: STL, discretize) -> "LRA":
@@ -130,6 +130,7 @@ def _stl_to_lra(phi, *, curr_len, discretize):
 
     elif isinstance(psi, stl.Neg):
         phi = _stl_to_lra(phi, curr_len=curr_len.arg, discretize=discretize)
+
     return phi
 
 
@@ -151,6 +152,7 @@ def matrix_to_dyn_stl(g):
         return [stl.Var(c, s, t) for s, c in zip(syms, row) if c != 0]
 
     model, (A, B, C) = g.model, g.model.dyn
+    A, B, C = model.dt*A + np.eye(len(model.vars.state)), model.dt*B, model.dt*C
     def row_to_stl(i, row):
         a_row, b_row, c_row = row
         terms = to_terms(a_row, model.vars.state)
@@ -160,4 +162,4 @@ def matrix_to_dyn_stl(g):
         return stl.LinEq(tuple(terms), "=", 0)
     
     dyn_constrs = (row_to_stl(i, row) for i, row in enumerate(zip(A, B, C)))
-    return stl.alw(stl.andf(*dyn_constrs), lo=0, hi=model.N)
+    return stl.alw(stl.andf(*dyn_constrs), lo=0, hi=model.H)

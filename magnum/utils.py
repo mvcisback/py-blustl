@@ -19,7 +19,7 @@ def project_solution_stl(sol, keys, t):
 Result = namedtuple("Result", ["feasible", "cost", "solution"])
 
 
-def result_to_pandas(res):
+def result_to_traces(res):
     if res.solution is None:
         return None
 
@@ -60,19 +60,21 @@ def dynamics_lipschitz(A, B, N):
 
 
 def pretty_print(g):
-    dynamics_str = "\n       ∧  ".join(map(str, g.spec.dyn.children()))
-    phi = (~g.spec.env | g.spec.sys) & g.spec.init
-    spec_str = "\n   ∧  ".join(map(str, phi.children()))
     print(f"""
 Specification
 =============
-spec: {spec_str}
+spec: {g.spec.obj}
+init: {g.spec.init}
+bounds: {g.spec.bounds}
 learned: {g.spec.learned}
-dynamics: {dynamics_str}
 
 MODEL
 =====
-dt: {g.model.dt}, N: {g.model.N} t: {g.model.t}
+    dt: {g.model.dt}, H: {g.model.H} t: {g.model.t}
+
+    A: {g.model.dyn.A}
+    B: {g.model.dyn.B}
+    C: {g.model.dyn.C}
 
 States:
 ------
@@ -80,11 +82,11 @@ States:
 
 Inputs:
 ------
-{[(u, g.model.bounds[u]) for u in g.model.vars.input]}
+{g.model.vars.input}
 
 Environment Inputs:
 ------------------
-{[(u, g.model.bounds[u]) for u in g.model.vars.env]}
+{g.model.vars.env}
 
 
 Meta:

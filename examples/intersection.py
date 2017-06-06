@@ -4,6 +4,7 @@ from sympy import Symbol
 
 from magnum import game as G
 from magnum import io
+from magnum.solvers.cegis import cegis_loop
 
 import numpy as np
 
@@ -28,9 +29,9 @@ model = G.Model(
     dyn=G.Dynamics(
         A=np.array([
             [0, 1, 0, 0],
-            [0, 0, 0, 1],
-            [0, 0, 0, 1],
-            [0, 0, 0, 0]
+            [0, 0, 0, 0],
+            [0, 0, 0, 0],
+            [0, 0, 0, 1]
         ]),
         B=np.array([0, 10, 0, 0]).reshape((4,1)),
         C=np.array([0, 0, 0, 10]).reshape((4,1)),
@@ -67,8 +68,8 @@ context = {
         "(goal) & (dontCrash) & (obeySpeedLimitX) & (noReversing)"),
 
     # Spec
-    parse("spec"): parse("(A) -> (G)")
-
+    #parse("spec"): parse("(A) -> (G)"),
+    parse("spec"): parse("A"),
 }
 
 spec = G.Specs(
@@ -87,3 +88,14 @@ meta = G.Meta(
 
 
 intersection = G.Game(spec=spec, model=model, meta=meta)
+
+if __name__ == '__main__':
+    with open('intersection.bin', 'wb') as f:
+        io.write(intersection, f)
+
+
+    _intersection = G.discretize_game(intersection)
+    #for _, (r, s) in zip(range(3), cegis_loop(_intersection)):
+    #    print('-------------')
+    #    print(r)
+    #    print(s)

@@ -34,7 +34,8 @@ def load_specs(g):
 
 def load_model(g):
     bounds = {Symbol(x.name): (x.lowerBound, x.upperBound) for x in 
-              chain(g.model.state, g.model.inputs, g.model.environmentInput)}
+              chain(g.model.state, g.model.inputs, g.model.environmentInput)
+              if x.lowerBound != -oo or x.upperBound != oo}
     return game.Model(
         dt=g.model.dt,
         N=g.model.horizon,
@@ -95,7 +96,7 @@ def to_capnp_specs(g):
 
 
 def to_capnp_var(g, var):
-    lo, hi = g.model.bounds[var]
+    lo, hi = g.model.bounds.get(var, (-oo, oo))
     return Var.new_message(
         name=str(var),
         lowerBound=lo,

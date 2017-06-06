@@ -10,21 +10,17 @@ import numpy as np
 ## Setup the Model
 
 model = G.Model(
-    dt=1,
-    N=2,
+    dt=0.01,
+    H=2,
     vars=G.Vars(
         state=(Symbol("x"),),
         input=(Symbol("u"),),
         env=()
     ),
-    bounds={
-        Symbol("x"): (0, 100),
-        Symbol("u"): (0, 1),
-    },
     t=0,
     dyn=G.Dynamics(
         A=np.array([[0]]),
-        B=np.array([[5]]),
+        B=np.array([[10]]),
         C=np.array([[]])
     )
 )
@@ -33,11 +29,13 @@ model = G.Model(
 
 context = {
     stl.parse("Init"): stl.parse("x = 0"),
-    stl.parse("ReachFive"): stl.parse("F(x > 5)", H=model.N),
+    stl.parse("ReachFive"): stl.parse("F(x > 5)", H=model.H),
 }
 
 spec = G.Specs(
-    obj=stl.utils.inline_context(stl.parse("(Init) & (ReachFive)"), context),
+    obj=stl.utils.inline_context(stl.parse("ReachFive"), context),
+    init=stl.utils.inline_context(stl.parse("Init"), context),
+    bounds=stl.parse("G((u <= 1) & (u >= 0))", H=model.H),
     learned=stl.TOP
 )
 

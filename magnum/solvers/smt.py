@@ -12,24 +12,10 @@ from magnum import game
 from magnum.utils import Result
 
 
-def _bounds(phi, g):
-    vars_ = [stl.Var(1, s, t) for s, t in stl.utils.vars_in_phi(phi)
-             if s in g.model.bounds]
-    for i, ineq in enumerate((">=", "<=")):
-        to_lineq = lambda v: stl.LinEq(
-            (v,), ineq, g.model.bounds[v.id][i])
-        yield from map(to_lineq, vars_)
-
-
-def bounds(phi, g):
-    return stl.andf(*_bounds(phi, g))
-
-
 def sl_to_smt(phi: "SL", g):
     store = {(s, t): Symbol(f"{s}[{t}]", REAL)
              for s, t in stl.utils.vars_in_phi(phi)}
-    psi = bounds(phi, g) & phi
-    return encode(psi, store), store
+    return encode(phi, store), store
 
 
 GET_OP = {
@@ -77,6 +63,7 @@ def _(psi, s: dict):
 def encode_and_run(g):
     # TODO: add bounds
     phi = game.game_to_stl(g)
+    phi = game.discretize_stl(phi, g.model)
     f, store = sl_to_smt(phi, g)
     model = get_model(f)
     if model is None:
@@ -84,5 +71,5 @@ def encode_and_run(g):
     solution = fn.group_by(
         ig(0), ((t, s, model[v]) for (
             s, t), v in store.items()))
-    solution = fn.walk_values(lambda xs: {k: v for _, k, v in xs}, solution)
+    solution = fn.walk_values(lambda xs: {k: v.constant_value() for _, k, v in xs}, solution)
     return Result(True, None, solution)
