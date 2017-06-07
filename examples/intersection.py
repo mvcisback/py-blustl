@@ -10,7 +10,7 @@ import numpy as np
 
 model = G.Model(
     dt=1,
-    N=4,
+    H=4,
     vars=G.Vars(
         state=(
             Symbol("x"),
@@ -21,24 +21,20 @@ model = G.Model(
         input=(Symbol("u"),),
         env=(Symbol("w"),)
     ),
-    bounds={
-        Symbol("u"): (0, 1),
-        Symbol("w"): (0, 1),
-    },
     t=0,
     dyn=G.Dynamics(
         A=np.array([
             [0, 1, 0, 0],
             [0, 0, 0, 0],
+            [0, 0, 0, 1],
             [0, 0, 0, 0],
-            [0, 0, 0, 1]
         ]),
         B=np.array([0, 10, 0, 0]).reshape((4,1)),
         C=np.array([0, 0, 0, 10]).reshape((4,1)),
     )
 )
 
-parse = lambda x: stl.parse(x, H=model.N)
+parse = lambda x: stl.parse(x, H=model.H)
 
 context = {
     # Init
@@ -56,7 +52,7 @@ context = {
     # Env Assumptions
     parse("obeySpeedLimitY"): parse("G(vy < 10.1)"),
     #"noReversing": "G(vy >= 10)",
-    parse("noParking"): parse("F(y > 10)"),
+    parse("noParking"): parse("F(y > 5)"),
     parse("A"): parse("(obeySpeedLimitY) & (noParking)"),
 
     # Guarantees
@@ -67,14 +63,20 @@ context = {
     parse("G"): parse(
         "(goal) & (dontCrash) & (obeySpeedLimitX) & (noReversing)"),
 
+    # Bounds
+    parse("uBounds"): parse("(u >= 0) & (u <= 1)"),
+    parse("wBounds"): parse("(w >= 0) & (w <= 1)"),
+
     # Spec
-    #parse("spec"): parse("(A) -> (G)"),
-    parse("spec"): parse("A"),
+    parse("spec"): parse("(A) -> (G)"),
 }
 
 spec = G.Specs(
-    obj=stl.utils.inline_context(parse("(Init) & (spec)"), context),
-    learned=stl.TOP
+    obj=stl.utils.inline_context(parse("(spec)"), context),
+    learned=stl.TOP,
+    init=stl.utils.inline_context(parse("(Init)"), context),
+    bounds=stl.utils.inline_context(
+        parse("G((uBounds) & (wBounds))"), context),
 )
 
 
@@ -89,13 +91,3 @@ meta = G.Meta(
 
 intersection = G.Game(spec=spec, model=model, meta=meta)
 
-if __name__ == '__main__':
-    with open('intersection.bin', 'wb') as f:
-        io.write(intersection, f)
-
-
-    _intersection = G.discretize_game(intersection)
-    #for _, (r, s) in zip(range(3), cegis_loop(_intersection)):
-    #    print('-------------')
-    #    print(r)
-    #    print(s)
