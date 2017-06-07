@@ -45,23 +45,25 @@ context = {
     parse("Init"): parse(
         "(xInit) & (vxInit) & (yInit) & (vyInit)"),
 
-    # General
+    # Speed Limits
+    parse("obeySpeedLimitX"): parse("G(vx <= 10.1)"),
+    parse("obeySpeedLimitY"): parse("G(vy < 10.1)"),
+
+    # Intersection
     parse("xInIntersection"): parse("(x > 0) & (x < 5)"),
-    parse("yNotInIntersection"): parse("(y <= 0) | (y >= 5)"),
+    parse("yInIntersection"): parse("(y > 0) & (y < 5)"),
+    parse("crash"): parse("(xInIntersection) & (yInIntersection)"),
+
+    # Goals
+    parse("reachDest"): parse("F(x > 5)"),
+    parse("dontCrash"): parse("G(~(crash))"),
 
     # Env Assumptions
-    parse("obeySpeedLimitY"): parse("G(vy < 10.1)"),
-    #"noReversing": "G(vy >= 10)",
-    parse("noParking"): parse("F(y > 5)"),
-    parse("A"): parse("(obeySpeedLimitY) & (noParking)"),
+    parse("A"): parse("(obeySpeedLimitY)"),
 
     # Guarantees
-    parse("goal"): parse("F(x > 5)"),
-    parse("dontCrash"): parse("G((xInIntersection) -> (yNotInIntersection))"),
-    parse("obeySpeedLimitX"): parse("G(vx <= 10.1)"),
-    parse("noReversing"): parse("G(vx >= 0)"),
     parse("G"): parse(
-        "(goal) & (dontCrash) & (obeySpeedLimitX) & (noReversing)"),
+        "(reachDest) & (dontCrash) & (obeySpeedLimitX)"),
 
     # Bounds
     parse("uBounds"): parse("(u >= 0) & (u <= 1)"),
