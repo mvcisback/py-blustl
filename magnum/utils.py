@@ -90,9 +90,7 @@ Environment Inputs:
 
 
 Meta:
-dxdu: {g.meta.dxdu}, dxdw: {g.meta.dxdw}, drdx: {g.meta.drdx}
+    drdu: {g.meta.drdu}, drdw: {g.meta.drdw}
 """)
 
 
-def to_yaml(g):
-    raise NotImplementedError()

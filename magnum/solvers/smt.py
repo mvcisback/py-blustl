@@ -72,4 +72,4 @@ def encode_and_run(g):
         ig(0), ((t, s, model[v]) for (
             s, t), v in store.items()))
     solution = fn.walk_values(lambda xs: {k: v.constant_value() for _, k, v in xs}, solution)
-    return Result(True, None, solution)
+    return Result(True, 0, solution)

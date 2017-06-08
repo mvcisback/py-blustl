@@ -25,7 +25,7 @@ from stl import STL
 Specs = namedtuple("Specs", "obj init learned bounds")
 Model = namedtuple("Model", "dt H vars t dyn")
 Vars = namedtuple("Vars", "state input env")
-Meta = namedtuple("Meta", "pri names dxdu dxdw drdx")
+Meta = namedtuple("Meta", "pri names drdu drdw")
 
 # x' = x + dt*(Ax + Bu + Cw)
 Dynamics = namedtuple("Dynamics", "A B C")
@@ -54,8 +54,8 @@ def invert_game(g):
     g2 = lens(g2).model.vars.input.set(g.model.vars.env)
 
     # Swap Dynamics Bounds
-    g2 = lens(g2).meta.dxdu.set(g.meta.dxdw)
-    g2 = lens(g2).meta.dxdw.set(g.meta.dxdu)
+    g2 = lens(g2).meta.drdu.set(g.meta.drdw)
+    g2 = lens(g2).meta.drdw.set(g.meta.drdu)
     return g2
 
 

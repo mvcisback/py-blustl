@@ -2,6 +2,7 @@ import stl
 
 from sympy import Symbol
 
+import magnum
 from magnum import game as G
 from magnum import io
 from magnum.solvers.cegis import cegis_loop
@@ -9,7 +10,7 @@ from magnum.solvers.cegis import cegis_loop
 import numpy as np
 
 model = G.Model(
-    dt=1,
+    dt=0.1,
     H=4,
     vars=G.Vars(
         state=(
@@ -45,10 +46,6 @@ context = {
     parse("Init"): parse(
         "(xInit) & (vxInit) & (yInit) & (vyInit)"),
 
-    # Speed Limits
-    parse("obeySpeedLimitX"): parse("G(vx <= 10.1)"),
-    parse("obeySpeedLimitY"): parse("G(vy < 10.1)"),
-
     # Intersection
     parse("xInIntersection"): parse("(x > 0) & (x < 5)"),
     parse("yInIntersection"): parse("(y > 0) & (y < 5)"),
@@ -59,11 +56,12 @@ context = {
     parse("dontCrash"): parse("G(~(crash))"),
 
     # Env Assumptions
+    parse("obeySpeedLimitY"): parse("G(vy <= 10.1)"),
     parse("A"): parse("(obeySpeedLimitY)"),
 
     # Guarantees
     parse("G"): parse(
-        "(reachDest) & (dontCrash) & (obeySpeedLimitX)"),
+        "(reachDest) & (dontCrash)"),
 
     # Bounds
     parse("uBounds"): parse("(u >= 0) & (u <= 1)"),
@@ -74,7 +72,7 @@ context = {
 }
 
 spec = G.Specs(
-    obj=stl.utils.inline_context(parse("(spec)"), context),
+    obj=stl.utils.inline_context(parse("(A) -> (G)"), context),
     learned=stl.TOP,
     init=stl.utils.inline_context(parse("(Init)"), context),
     bounds=stl.utils.inline_context(
@@ -82,14 +80,18 @@ spec = G.Specs(
 )
 
 
+A, B, C = model.dyn
+A = np.eye(A.shape[0]) + A
+L_u = magnum.utils.dynamics_lipschitz(A, B, model.H)
+L_w = magnum.utils.dynamics_lipschitz(A, C, model.H)
+L_x = stl.utils.linear_stl_lipschitz(spec.obj)
+
 meta = G.Meta(
     pri={},
     names={},
-    dxdu=float('inf'),
-    dxdw=float('inf'),
-    drdx=float('inf')
+    drdu=L_u*L_x,
+    drdw=L_w*L_x,
 )
 
 
 intersection = G.Game(spec=spec, model=model, meta=meta)
-

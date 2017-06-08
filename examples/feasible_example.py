@@ -43,9 +43,8 @@ spec = G.Specs(
 meta = G.Meta(
     pri={},
     names={},
-    dxdu=None,
-    dxdw=None,
-    drdx=None
+    drdu=None,
+    drdw=None,
 )
 
 
