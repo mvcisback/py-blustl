@@ -18,8 +18,8 @@ model = G.Model(
             Symbol("vx"),
             Symbol("y"),
             Symbol("vy")
-        ),
-        input=(Symbol("u"),),
+        ), 
+       input=(Symbol("u"),),
         env=(Symbol("w"),)
     ),
     t=0,
