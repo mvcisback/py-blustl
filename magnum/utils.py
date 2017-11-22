@@ -12,9 +12,11 @@ def to_lineq(d: dict, t=stl.t_sym):
 
 
 def project_solution_stl(sol, keys, t):
-    vals = [to_lineq(fn.project(v, keys), t=k)
-            for k, v in sol.items() if k >= t]
+    vals = [
+        to_lineq(fn.project(v, keys), t=k) for k, v in sol.items() if k >= t
+    ]
     return [v for v in vals if v is not stl.TOP]
+
 
 Result = namedtuple("Result", ["feasible", "cost", "solution"])
 
@@ -23,8 +25,11 @@ def result_to_traces(res):
     if res.solution is None:
         return None
 
-    data = {k: {str(k2): float(v2) for k2, v2 in v.items()}
-            for k, v in res.solution.items()}
+    data = {
+        k: {str(k2): float(v2)
+            for k2, v2 in v.items()}
+        for k, v in res.solution.items()
+    }
     return pd.DataFrame(data=data).T
 
 
@@ -36,6 +41,7 @@ def _gen_eigs(A, B, N):
             M = A @ M
     else:
         yield 0
+
 
 def dynamics_lipschitz(A, B, N):
     """
@@ -92,5 +98,3 @@ Environment Inputs:
 Meta:
     drdu: {g.meta.drdu}, drdw: {g.meta.drdw}
 """)
-
-

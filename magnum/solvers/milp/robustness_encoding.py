@@ -20,14 +20,12 @@ def z(x: "SL", i: int, g: Game):
     r_var = lp.LpVariable(cat=C.Real.value, **kwargs)
 
     if not isinstance(x, (stl.And, stl.Or)):
-        return (r_var,)
+        return (r_var, )
 
     bool_vars = {
-        arg: lp.LpVariable(
-            cat=C.Bool.value,
-            name=f"p{i}{j}") for j,
-        arg in enumerate(
-            x.args)}
+        arg: lp.LpVariable(cat=C.Bool.value, name=f"p{i}{j}")
+        for j, arg in enumerate(x.args)
+    }
     return (r_var, bool_vars)
 
 
@@ -43,8 +41,8 @@ def _(phi, s: dict):
 
 @encode.register(stl.LinEq)
 def _(psi, s: dict):
-    x = sum(float(term.coeff) * s[(term.id, term.time)][0]
-            for term in psi.terms)
+    x = sum(
+        float(term.coeff) * s[(term.id, term.time)][0] for term in psi.terms)
     if psi.op == "=":
         # TODO: this should either be -M or M
         yield x == psi.const, K.PRED_EQ
@@ -68,5 +66,5 @@ def encode_op(phi: "SL", s: dict, *, k: Kind, isor: bool):
 
 
 encode.register(stl.Or)(partial(encode_op, k=(K.OR, K.OR_TOTAL), isor=True))
-encode.register(stl.And)(
-    partial(encode_op, k=(K.AND, K.AND_TOTAL), isor=False))
+encode.register(stl.And)(partial(
+    encode_op, k=(K.AND, K.AND_TOTAL), isor=False))

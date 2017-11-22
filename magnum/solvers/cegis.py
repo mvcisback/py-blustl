@@ -10,20 +10,20 @@ from magnum.utils import project_solution_stl
 
 from enum import Enum, auto
 
+
 class CegisState(Enum):
     INITIAL_LOOP = auto()
     U_DOMINANT = auto()
     W_DOMINANT = auto()
     W_NOT_DOMINANT = auto()
     U_NOT_DOMINANT = auto()
-    MAYBE_REACTIVE = auto() 
+    MAYBE_REACTIVE = auto()
 
 
 TERMINATION_STATES = {
-    CegisState.MAYBE_REACTIVE, 
-    CegisState.W_DOMINANT,
-    CegisState.U_DOMINANT
+    CegisState.MAYBE_REACTIVE, CegisState.W_DOMINANT, CegisState.U_DOMINANT
 }
+
 
 def cegis(g):
     converged = lambda x: x[1] in TERMINATION_STATES
@@ -51,7 +51,7 @@ def update_state(response, is_p1, converged, state):
                 return CegisState.W_NOT_DOMINANT
     else:
         return state
-    
+
 
 def cegis_loop(g):
     """CEGIS for dominant/robust strategy.
@@ -74,7 +74,7 @@ def cegis_loop(g):
 
         # Update State
         state = update_state(response, p == p1, converged, state)
-            
+
         yield response, state
 
 
@@ -82,7 +82,7 @@ def banned_square(prev_input, cost, g):
     if g.meta.dxdu == 0:
         return prev_input
 
-    R = cost/g.meta.dxdu
+    R = cost / g.meta.dxdu
     delta = R - prev_input.const
     lower = lens(lens(prev_input).op.set("<")).const.set(delta)
     upper = lens(lens(prev_input).op.set(">")).const.set(-delta)
@@ -128,7 +128,7 @@ def player(g):
         # Step 2) respond to w's response.
         learned = response & ~banned_inputs
         prediction = predict(learned_lens.set(learned))
-            
+
         # Step 3) Consider old inputs upon failure
         if not prediction.feasible:
             converged = True

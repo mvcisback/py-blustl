@@ -41,14 +41,16 @@ def state_to_sl(g: Game, q):
     """Takes measurements and writes appropriate STL.
     Currently assumes piecewise interpolation of measurements.
     """
+
     def measure_lemma(vals: stl, t: int):
         # TODO: Interval should just be [t, t+g.model.dt)
         # Currently a hack since we don't support open intervals
         psi = stl.G(stl.Interval(t, t + g.model.dt / 2), to_lineq(vals))
         return discretize_stl(psi, g.model)
 
-    return stl.andf(*[measure_lemma(phis, t) for t, phis in
-                      enumerate(q) if len(phis) != 0])
+    return stl.andf(*[
+        measure_lemma(phis, t) for t, phis in enumerate(q) if len(phis) != 0
+    ])
 
 
 def mpc(g: Game, *, endless=True):

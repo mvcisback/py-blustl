@@ -34,9 +34,9 @@ def encode(psi, s):
 
 @encode.register(stl.LinEq)
 def _(psi, s: dict):
-    x = sum(float(term.coeff) *
-            (s[(term.id, term.time)] +
-             0) for term in psi.terms)
+    x = sum(
+        float(term.coeff) * (s[(term.id, term.time)] + 0)
+        for term in psi.terms)
     return GET_OP[psi.op](x, psi.const)
 
 
@@ -69,7 +69,6 @@ def encode_and_run(g):
     if model is None:
         return Result(False, None, None)
     solution = fn.group_by(
-        ig(0), ((t, s, model[v]) for (
-            s, t), v in store.items()))
+        ig(0), ((t, s, model[v]) for (s, t), v in store.items()))
     solution = fn.walk_values(lambda xs: {k: v.constant_value() for _, k, v in xs}, solution)
     return Result(True, 0, solution)

@@ -61,5 +61,5 @@ def encode_op(phi: "SL", s: dict, *, k: Kind, isor: bool):
 
 
 encode.register(stl.Or)(partial(encode_op, k=(K.OR, K.OR_TOTAL), isor=True))
-encode.register(stl.And)(
-    partial(encode_op, k=(K.AND, K.AND_TOTAL), isor=False))
+encode.register(stl.And)(partial(
+    encode_op, k=(K.AND, K.AND_TOTAL), isor=False))

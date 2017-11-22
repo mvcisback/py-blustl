@@ -10,11 +10,10 @@ setup(
     license='MIT',
     install_requires=[
         'funcy',
-        'PyYAML',
         'lenses',
         'py-stl',
         'pulp',
-        'pyeda',
+        #'pyeda',
         'pandas',
     ],
     packages=find_packages(),
