@@ -11,10 +11,8 @@ TODO: refactor discretization
 
 from typing import NamedTuple, Tuple, TypeVar, Mapping
 
-import numpy as np
 from lenses import bind
 
-import stl
 from stl import STL
 
 Matrix = TypeVar('M')
@@ -54,26 +52,18 @@ class Meta(NamedTuple):
     drdw: float
 
 
-class DiscreteGame(NamedTuple):
-    specs: Specs
-    vars: Vars
-    meta: Meta
-
-
 # TODO: Make a more convenient constructor
 class Game(NamedTuple):
     specs: Specs
     model: Model
     meta: Meta
 
-    def as_stl(self):
-        g = self
-        dyn = matrix_to_dyn_stl(g)
-        obj = g.specs.obj
-        learned = g.specs.learned
-        init = g.specs.init
-        bounds = g.specs.bounds
-        return dyn & obj & learned & init & bounds
+    def spec_as_stl(self):
+        obj = self.specs.obj
+        learned = self.specs.learned
+        init = self.specs.init
+        bounds = self.specs.bounds
+        return obj & learned & init & bounds
 
     def invert(self):
         # Swap Spec
@@ -86,8 +76,3 @@ class Game(NamedTuple):
         g = bind(g).meta.drdu.set(self.meta.drdw)
         g = bind(g).meta.drdw.set(self.meta.drdu)
         return g
-
-
-def discretize(g):
-    specs = Specs(*(discretize_stl(spec, m=g.model) for spec in g.spec))
-    return bind(g).specs.set(specs)

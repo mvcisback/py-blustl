@@ -1,4 +1,5 @@
 from collections import namedtuple
+
 import funcy as fn
 import pandas as pd
 import numpy as np
@@ -6,7 +7,7 @@ import numpy as np
 import stl
 
 
-def to_lineq(d: dict, t=stl.t_sym):
+def to_lineq(d: dict, t):
     return stl.andf(*(stl.LinEq((stl.Var(1, k, t), ), "=", v)
                       for k, v in d.items()))
 
