@@ -5,6 +5,7 @@ from functools import singledispatch
 
 import funcy as fn
 import numpy as np
+import traces
 from bidict import bidict
 from pysmt.shortcuts import Symbol, get_model, Plus, And, Or, Equals
 from pysmt.operators import LT, LE
@@ -127,26 +128,25 @@ def encode_dynamics(g, store=None):
     B = dt * B
     C = dt * C
 
-    times = list(range(g.model.H + 2))
+    times = g.times
 
     for name, t in product(g.model.vars.state, times):
         if (name, t) not in store:
             store[name, t] = Symbol(f"{name}[{t}]", REAL)
 
-    lhses = [
-        store[name, t] for name, t in product(g.model.vars.state, times[1:])
-    ]
-
-    return And(*(_encode_dynamics(A, B, C, g.model.vars, lhses, store, t)
+    return And(*(_encode_dynamics(A, B, C, g.model.vars, store, t)
                  for t in times[:-1])), store
 
 
-def _encode_dynamics(A, B, C, var_lists, lhs, store, t):
-    return And(*(row_to_smt(zip([a, b, c], var_lists), x, store, t)
-                 for x, (a, b, c) in zip(lhs, zip(A, B, C))))
+def _encode_dynamics(A, B, C, var_lists, store, t):
+    rhses = [row_to_smt(zip([a, b, c], var_lists), store, t)
+                    for a, b, c in zip(A, B, C)]
+    lhses = [store[v, t+1] for v in var_lists[0]]
+
+    return And(*(Equals(lhs, rhs) for lhs, rhs in zip(lhses, rhses)))
 
 
-def row_to_smt(rows_and_var_lists, lhs, store, t):
+def row_to_smt(rows_and_var_lists, store, t):
     rows_and_var_lists = list(rows_and_var_lists)
     print(rows_and_var_lists)
 
@@ -159,25 +159,33 @@ def row_to_smt(rows_and_var_lists, lhs, store, t):
 
         return (_create_var(a, x) for a, x in zip(*rows_and_vars))
 
-    rhs = Plus(fn.mapcat(_row_to_smt, rows_and_var_lists))
-    return Equals(lhs, rhs)
+    return Plus(fn.mapcat(_row_to_smt, rows_and_var_lists))
 
 
-def decode_dynmaics(eq, store=None):
+def decode_dynamics(eq, store=None):
     pass
+
+
+def extract_ts(name, model, g, store):
+    dt = g.model.dt
+    # TODO: hack to have to eval this
+    ts = traces.TimeSeries(((dt*t, eval(str(model[store[name, t]]))) 
+                             for t in g.times), domain=(0, g.model.H))
+    ts.compact()
+    return ts
 
 
 def encode_and_run(g):
     # TODO: add bounds
-    phi = game.spec_as_stl(g)
-    phi = stl.utils.discretize(phi, g.model.dt)
-    f, store = encode(phi)
+    phi = g.spec_as_stl()
+    phi = stl.utils.discretize(phi, g.model.dt)    
+    f1, store = encode(phi)
     f2, store = encode_dynamics(g, store)
+    f = (f1 & f2).simplify()
     model = get_model(f)
+
     if model is None:
         return Result(False, None, None)
-    solution = fn.group_by(
-        ig(0), ((t, s, model[v]) for (s, t), v in store.items()))
-    solution = fn.walk_values(
-        lambda xs: {k: v.constant_value() for _, k, v in xs}, solution)
-    return Result(True, 0, solution)
+
+    sol = {v: extract_ts(v, model, g, store) for v in fn.cat(g.model.vars)}
+    return Result(True, 0, sol)

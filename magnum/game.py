@@ -8,7 +8,7 @@ TODO: Include meta information in Game
 TODO: create map from SL expr to matching Temporal Logic term after conversion
 TODO: refactor discretization
 """
-
+from math import ceil
 from typing import NamedTuple, Tuple, TypeVar, Mapping
 
 from lenses import bind
@@ -76,3 +76,7 @@ class Game(NamedTuple):
         g = bind(g).meta.drdu.set(self.meta.drdw)
         g = bind(g).meta.drdw.set(self.meta.drdu)
         return g
+
+    @property
+    def times(self):
+        return range(ceil(self.model.H/self.model.dt) + 1)
