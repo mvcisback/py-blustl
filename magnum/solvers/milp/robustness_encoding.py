@@ -77,9 +77,12 @@ def encode_op(phi: "SL", s, t, *, k: Kind, isor: bool):
     elems = [s[psi] for psi in phi.args]
     rel = op.ge if isor else op.le
     for psi, e in zip(phi.args, elems):
+        if len(e) > 1:
+            e = e[0]
         yield rel(r_var, e), k[0]
         yield e - (1 - bool_vars[psi]) * M <= r_var, k[0]
         yield r_var <= e + M * (1 - bool_vars[psi]), k[0]
+
 
     for psi in phi.args:
         yield from encode(psi, s, t)

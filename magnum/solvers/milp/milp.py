@@ -82,7 +82,8 @@ def extract_ts(name, model, g, store):
     dt = g.model.dt
     model = {x: x.value() for x in model.variables()}
     ts = traces.TimeSeries(((dt*t, model[store[name, t][0]])
-                             for t in g.times), domain=(0, g.model.H))
+                             for t in g.times if store[name, t][0] in model)
+                           , domain=(0, g.model.H))
     ts.compact()
     return ts
 

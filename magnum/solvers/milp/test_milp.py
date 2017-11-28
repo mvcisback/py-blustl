@@ -22,9 +22,21 @@ def test_feasible():
     phi = g.spec_as_stl(discretize=False)
     dt = g.model.dt
     assert pointwise_sat(phi, dt=dt)(res.solution)
+    assert res.cost == 5
     
     res = milp.encode_and_run(g.invert())
     phi = g.spec_as_stl(discretize=False)
     dt = g.model.dt
     assert not pointwise_sat(phi, dt=dt)(res.solution)
+    assert res.cost == 5
+
     
+def test_one_player_rps_feasibility():
+    from magnum.examples.rock_paper_scissors import rps as g
+    from stl.boolean_eval import pointwise_sat
+    res = milp.encode_and_run(g)
+    phi = g.spec_as_stl(discretize=False)
+    dt = g.model.dt
+    assert pointwise_sat(phi, dt=dt)(res.solution)
+    
+    assert res.cost == 10

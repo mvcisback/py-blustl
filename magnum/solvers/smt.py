@@ -142,13 +142,11 @@ def _encode_dynamics(A, B, C, var_lists, store, t):
     rhses = [row_to_smt(zip([a, b, c], var_lists), store, t)
                     for a, b, c in zip(A, B, C)]
     lhses = [store[v, t+1] for v in var_lists[0]]
-
     return And(*(Equals(lhs, rhs) for lhs, rhs in zip(lhses, rhses)))
 
 
 def row_to_smt(rows_and_var_lists, store, t):
     rows_and_var_lists = list(rows_and_var_lists)
-    print(rows_and_var_lists)
 
     def _row_to_smt(rows_and_vars):
         def _create_var(a, x):
@@ -169,8 +167,10 @@ def decode_dynamics(eq, store=None):
 def extract_ts(name, model, g, store):
     dt = g.model.dt
     # TODO: hack to have to eval this
+    # TODO: support extracting H=0 timeseries
     ts = traces.TimeSeries(((dt*t, eval(str(model[store[name, t]]))) 
-                             for t in g.times), domain=(0, g.model.H))
+                             for t in g.times if (name, t) in store),
+                           domain=(0, g.model.H))
     ts.compact()
     return ts
 
