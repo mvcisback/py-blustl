@@ -1,3 +1,4 @@
+import funcy as fn
 import stl
 
 from lenses import bind
@@ -10,6 +11,18 @@ def test_invertability():
     smt_phi, store = encode(psi)
     psi2 = decode(smt_phi, store)
     assert psi == psi2
+
+
+def test_pre_evaluated():
+    phi = stl.parse('(G[0, 1](x > 4)) | (~(F[0, 1](y < 5)))')
+    psi = stl.utils.discretize(phi, 1)
+    store = {('x', 0): 0, ('x', 1): 0, ('y', 0): 0, ('y', 1): 0}
+    smt_phi, store = encode(psi, store)
+    assert smt_phi.simplify().is_false()
+
+    store = {('x', 0): 0, ('x', 1): 0, ('y', 0): 6, ('y', 1): 6}
+    smt_phi, store = encode(psi, store)
+    assert smt_phi.simplify().is_true()
 
 
 def test_feasible_example():

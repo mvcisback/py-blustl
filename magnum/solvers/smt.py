@@ -8,6 +8,7 @@ import numpy as np
 import traces
 from bidict import bidict
 from pysmt.shortcuts import Symbol, get_model, Plus, And, Or, Equals
+from pysmt.shortcuts import FALSE, TRUE
 from pysmt.operators import LT, LE
 from pysmt.typing import REAL, BOOL
 
@@ -19,7 +20,7 @@ from magnum.utils import Result
 
 def encode(phi, store=None):
     if store is None:
-        store = bidict()
+        store = dict()
 
     return _encode(phi, store, t=0), store
 
@@ -39,44 +40,62 @@ def _encode(psi, s, t):
 
 
 @_encode.register(stl.LinEq)
-def _encode_lineq(psi, s: bidict, t):
+def _encode_lineq(psi, s: dict, t):
     def _symbolic_term(term):
-        if (term, t) not in s:
+        if (term.id, t) not in s:
             s[(term.id, t)] = Symbol(f"{term}[{t}]", REAL)
         return float(term.coeff) * s[(term.id, t)]
 
     x = Plus([_symbolic_term(term) for term in psi.terms])
-    return GET_OP[psi.op](x, psi.const)
+    eq = GET_OP[psi.op](x, psi.const)
+    if eq is False:
+        return FALSE()
+    elif eq is True:
+        return TRUE()
+    return eq
 
 
 @_encode.register(stl.AtomicPred)
-def _encode_ap(psi, s: bidict, t):
+def _encode_ap(psi, s: dict, t):
     if (psi, t) not in s:
         s[(psi.id, t)] = Symbol(f"{psi.id}[{t}]", BOOL)
-    return s[(psi.id, t)]
+
+    eq = s[(psi.id, t)]
+
+    if eq is False:
+        # TODO: hack to encode false
+        return FALSE()
+    elif eq is True:
+        # TODO: hack to encode true
+        return TRUE()
+
+    return eq
 
 
 @_encode.register(stl.And)
-def _encode_and(psi, s: bidict, t):
+def _encode_and(psi, s: dict, t):
     return And(*(_encode(x, s, t) for x in psi.args))
 
 
 @_encode.register(stl.Or)
-def _encode_or(psi, s: bidict, t):
+def _encode_or(psi, s: dict, t):
     return Or(*(_encode(x, s, t) for x in psi.args))
 
 
 @_encode.register(stl.Neg)
-def _encode_neg(psi, s: bidict, t):
+def _encode_neg(psi, s: dict, t):
     return ~_encode(psi.arg, s, t)
 
 
 @_encode.register(stl.Next)
-def _encode_next(psi, s: bidict, t):
+def _encode_next(psi, s: dict, t):
     return _encode(psi.arg, s, t + 1)
 
 
 def decode(smt_expr, s):
+    if isinstance(s, dict):
+        s = bidict(s)
+
     kind = smt_expr.node_type()
     if kind in (LT, LE):
         lhs, rhs = smt_expr.args()
@@ -118,7 +137,7 @@ def decode(smt_expr, s):
 
 def encode_dynamics(g, store=None):
     if store is None:
-        store = bidict()
+        store = dict()
 
     A, B, C = g.model.dyn
     dt = g.model.dt
