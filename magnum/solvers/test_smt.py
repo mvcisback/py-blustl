@@ -14,6 +14,10 @@ def test_feasible_example():
     from magnum.examples.feasible_example import feasible_example as g
     from stl.boolean_eval import pointwise_sat
     res = encode_and_run(g)
-    phi = g.spec_as_stl()
-    assert pointwise_sat(phi)(res.solution, 0)
-    
+    phi = g.spec_as_stl(discretize=False)
+    dt = g.model.dt
+    assert pointwise_sat(phi, dt=dt)(res.solution)
+
+    res = encode_and_run(g.invert())
+    phi = g.spec_as_stl(discretize=False)
+    assert not pointwise_sat(phi, dt=dt)(res.solution)

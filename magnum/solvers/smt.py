@@ -178,7 +178,6 @@ def extract_ts(name, model, g, store):
 def encode_and_run(g):
     # TODO: add bounds
     phi = g.spec_as_stl()
-    phi = stl.utils.discretize(phi, g.model.dt)    
     f1, store = encode(phi)
     f2, store = encode_dynamics(g, store)
     f = (f1 & f2).simplify()

@@ -11,8 +11,8 @@ TODO: refactor discretization
 from math import ceil
 from typing import NamedTuple, Tuple, TypeVar, Mapping
 
+import stl
 from lenses import bind
-
 from stl import STL
 
 Matrix = TypeVar('M')
@@ -58,12 +58,16 @@ class Game(NamedTuple):
     model: Model
     meta: Meta
 
-    def spec_as_stl(self):
-        obj = self.specs.obj
-        learned = self.specs.learned
-        init = self.specs.init
-        bounds = self.specs.bounds
-        return obj & learned & init & bounds
+    def spec_as_stl(self, discretize=True):
+        spec = self.specs.obj
+        spec &= self.specs.learned
+        spec &= self.specs.init
+        spec &= self.specs.bounds
+
+        if discretize:
+            spec = stl.utils.discretize(spec, self.model.dt)
+
+        return spec
 
     def invert(self):
         # Swap Spec
