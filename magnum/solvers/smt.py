@@ -223,7 +223,6 @@ def encode_and_run(g, counter_examples=None):
         store.update(counter_example_store(g, ce))
         f1, store = encode(phi, store)
         f2, store = encode_dynamics(g, store)
-        f3 = f1 & f2
 
         # Create new variable names to avoid conflicts.
         subs = counter_example_subs(g, store, ce) if i > 0 else {}
