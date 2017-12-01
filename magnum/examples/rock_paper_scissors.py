@@ -1,10 +1,7 @@
 import stl
 
-from sympy import Symbol
-
 import magnum
 from magnum import game as G
-from magnum.solvers.cegis import cegis_loop
 
 import numpy as np
 
