@@ -4,7 +4,6 @@ from lenses import lens
 import magnum
 from magnum.solvers import smt
 from magnum.solvers import milp
-from magnum.utils import Result
 
 
 class MaxRoundsError(Exception):
@@ -38,7 +37,7 @@ def cegis_loop(g, max_rounds=10, use_smt=False, max_ce=float('inf')):
     for _ in round_counter(max_rounds):
         play = solve(g, counter_examples=counter_examples)
         if not play.feasible:
-            return Result(False, None, None), counter_examples
+            return play, counter_examples
         
         solution = fn.project(play.solution, g.model.vars.input)
         counter = solve(g_inv, counter_examples=[solution])
