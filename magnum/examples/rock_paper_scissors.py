@@ -27,12 +27,11 @@ context = {
     # Init
     parse("Init"): stl.parse('(x = 0) & (y = 0)'),
 
-
     # Rock
     parse("xRock"):
-    parse("((x >= -1) & (x < 10)) | ((x >= 50) & (x <= 70))"),
+    parse("(x < 10) | (x >= 50)"),
     parse("yRock"):
-    parse("((y >= -1) & (y < 10)) | ((y >= 50) & (y <= 70))"),
+    parse("(y < 10) | (y >= 50)"),
 
     # Paper
     parse("xPaper"):
