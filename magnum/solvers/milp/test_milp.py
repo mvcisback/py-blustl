@@ -54,6 +54,32 @@ def test_rps_counter_examples():
     res = milp.encode_and_run(g, counter_examples=ces)
     assert not res.feasible
 
+    g = g.invert()
+
+    res = milp.encode_and_run(g)
+    assert res.feasible
+    
+    ces = [{'u': traces.TimeSeries([(0, 20/60)])}]
+
+    res = milp.encode_and_run(g, counter_examples=ces)
+    assert res.feasible
+
+    ces = [{'u': traces.TimeSeries([(0, 40/60)])}]
+
+    res = milp.encode_and_run(g, counter_examples=ces)
+    assert res.feasible
+
+    ces = [({'u': traces.TimeSeries([(0, 0)])})]
+
+    res = milp.encode_and_run(g, counter_examples=ces)
+    assert res.feasible
+
+    ces = [({'u': traces.TimeSeries([(0, 1)])})]
+
+    res = milp.encode_and_run(g, counter_examples=ces)
+    assert res.feasible
+
+
 
 def test_counter_examples():
     from magnum.examples.feasible_example2 import feasible_example as g
@@ -73,4 +99,3 @@ def test_counter_examples():
            {'w': traces.TimeSeries([(0, 0)])}]
     res = milp.encode_and_run(g, counter_examples=ces)
     assert not res.feasible
-

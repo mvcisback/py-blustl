@@ -213,7 +213,7 @@ def encode_and_run(g, counter_examples=None):
     # TODO: add bounds
     phi = g.spec_as_stl()
 
-    if counter_examples is None:
+    if not counter_examples:
         counter_examples = [{}]
 
     f = TRUE()

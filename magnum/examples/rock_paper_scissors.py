@@ -30,9 +30,9 @@ context = {
 
     # Rock
     parse("xRock"):
-    parse("((x >= 0) & (x < 10)) | ((x >= 50) & (x <= 60))"),
+    parse("((x >= -1) & (x < 10)) | ((x >= 50) & (x <= 70))"),
     parse("yRock"):
-    parse("((y >= 0) & (y < 10)) | ((y >= 50) & (y <= 60))"),
+    parse("((y >= -1) & (y < 10)) | ((y >= 50) & (y <= 70))"),
 
     # Paper
     parse("xPaper"):
