@@ -76,6 +76,10 @@ class Game(NamedTuple):
         g = bind(g).model.vars.env.set(self.model.vars.input)
         g = bind(g).model.vars.input.set(self.model.vars.env)
 
+        # Swap Dynamics
+        g = bind(g).model.dyn.B.set(self.model.dyn.C)
+        g = bind(g).model.dyn.C.set(self.model.dyn.B)
+
         # Swap Dynamics Bounds
         g = bind(g).meta.drdu.set(self.meta.drdw)
         g = bind(g).meta.drdw.set(self.meta.drdu)

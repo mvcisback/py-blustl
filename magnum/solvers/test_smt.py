@@ -74,3 +74,21 @@ def test_rps_counter_examples():
 
     res = encode_and_run(g, counter_examples=ces)
     assert not res.feasible
+
+
+    g = g.invert()
+    
+    ces = [{'u': traces.TimeSeries([(0, 20/60)])}]
+
+    res = encode_and_run(g, counter_examples=ces)
+    assert res.feasible
+
+    ces.append({'u': traces.TimeSeries([(0, 40/60)])})
+
+    res = encode_and_run(g, counter_examples=ces)
+    assert res.feasible
+
+    ces.append({'u': traces.TimeSeries([(0, 0)])})
+
+    res = encode_and_run(g, counter_examples=ces)
+    assert not res.feasible

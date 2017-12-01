@@ -39,12 +39,13 @@ def add_constr(model, constr, kind: K, i: int):
     model.addConstraint(constr, name=name)
 
 
-def counter_example_store(times, ce, i):
+def counter_example_store(g, ce, i):
     def relabel(x):
         return x if i == 0 else f"{x}#{i}"
 
-    return {(relabel(name), t): (trace[t],)
-            for (name, trace), t in product(ce.items(), times)}
+    dt = g.model.dt
+    return {(relabel(name), t): (trace[dt*t],)
+            for (name, trace), t in product(ce.items(), g.times)}
 
 
 def encode_game(g, store, ce=None):
@@ -83,7 +84,7 @@ def game_to_milp(g: Game, robust=True, counter_examples=None):
     store = keydefaultdict(rob_encode.z)
     # Add counter examples to store
     for i, ce in enumerate(counter_examples):
-        store.update(counter_example_store(g.times, ce, i))
+        store.update(counter_example_store(g, ce, i))
 
     # Encode each scenario.
     scenarios = [create_scenario(g, i) for i, ce in enumerate(counter_examples)]

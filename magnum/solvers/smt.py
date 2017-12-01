@@ -186,9 +186,10 @@ def decode_dynamics(eq, store=None):
     pass
 
 
-def counter_example_store(times, ce):
-    return {(name, t): trace[t]
-            for (name, trace), t in product(ce.items(), times)}
+def counter_example_store(g, ce):
+    dt = g.model.dt
+    return {(name, t): trace[dt*t]
+            for (name, trace), t in product(ce.items(), g.times)}
 
 
 def counter_example_subs(g, store, ce):
@@ -219,7 +220,7 @@ def encode_and_run(g, counter_examples=None):
     store = {}
     for i, ce in enumerate(counter_examples):
         # Need to inline counter example .
-        store.update(counter_example_store(g.times, ce))
+        store.update(counter_example_store(g, ce))
         f1, store = encode(phi, store)
         f2, store = encode_dynamics(g, store)
         f3 = f1 & f2
