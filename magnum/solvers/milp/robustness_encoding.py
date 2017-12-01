@@ -1,5 +1,5 @@
 import operator as op
-from functools import partial, singledispatch
+from functools import partial, singledispatch, wraps
 
 import stl
 import funcy as fn
@@ -12,12 +12,23 @@ from magnum.constraint_kinds import Category as C
 
 M = 1000  # TODO
 
+def counter(func):
+    i = 0
+    @wraps(func)
+    def _func(*args, **kwargs):
+        nonlocal i
+        i += 1
+        return func(i, *args, **kwargs)
 
-def z(x: "SL", i: int):
+    return _func
+
+
+@counter
+def z(i, x: "SL"):
     # TODO: come up with better function name    
     kwargs = {"name": f"r{i}"}
     if isinstance(x[0], str) and isinstance(x[1], int):
-        kwargs = {'name': f"{x[0]}{x[1]}"}
+        kwargs = {'name': f"{x[0]}_{x[1]}"}
         
     r_var = lp.LpVariable(cat=C.Real.value, **kwargs)
 
@@ -25,7 +36,7 @@ def z(x: "SL", i: int):
         return (r_var, )
 
     bool_vars = {
-        arg: lp.LpVariable(cat=C.Bool.value, name=f"p{i}{j}")
+        arg: lp.LpVariable(cat=C.Bool.value, name=f"p{i}_{j}")
         for j, arg in enumerate(x.args)
     }
     return (r_var, tuple(bool_vars.items()))

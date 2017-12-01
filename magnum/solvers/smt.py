@@ -1,3 +1,5 @@
+# TODO: Create store abstraction class
+
 import operator as op
 from operator import itemgetter as ig
 from itertools import product
@@ -6,9 +8,10 @@ from functools import singledispatch
 import funcy as fn
 import numpy as np
 import traces
+from lenses import bind
 from bidict import bidict
 from pysmt.shortcuts import Symbol, get_model, Plus, And, Or, Equals
-from pysmt.shortcuts import FALSE, TRUE
+from pysmt.shortcuts import FALSE, TRUE, FreshSymbol
 from pysmt.operators import LT, LE
 from pysmt.typing import REAL, BOOL
 
@@ -171,16 +174,26 @@ def row_to_smt(rows_and_var_lists, store, t):
         def _create_var(a, x):
             if (x, t) not in store:
                 store[(x, t)] = Symbol(f"{x}[{t}]", REAL)
-
+            
             return float(a) * store[x, t]
 
         return (_create_var(a, x) for a, x in zip(*rows_and_vars))
 
-    return Plus(fn.mapcat(_row_to_smt, rows_and_var_lists))
+    return sum(fn.mapcat(_row_to_smt, rows_and_var_lists))
 
 
 def decode_dynamics(eq, store=None):
     pass
+
+
+def counter_example_store(times, ce):
+    return {(name, t): trace[t]
+            for (name, trace), t in product(ce.items(), times)}
+
+
+def counter_example_subs(g, store, ce):
+    names = set(g.model.vars.state)
+    return {store[key]: FreshSymbol(REAL) for key in product(names, g.times)}
 
 
 def extract_ts(name, model, g, store):
@@ -188,19 +201,35 @@ def extract_ts(name, model, g, store):
     # TODO: hack to have to eval this
     # TODO: support extracting H=0 timeseries
     ts = traces.TimeSeries(((dt*t, eval(str(model[store[name, t]]))) 
-                             for t in g.times if (name, t) in store),
+                             for t in g.times 
+                            if (name, t) in store and store[name, t] in model),
                            domain=(0, g.model.H))
     ts.compact()
     return ts
 
 
-def encode_and_run(g):
+def encode_and_run(g, counter_examples=None):
     # TODO: add bounds
     phi = g.spec_as_stl()
-    f1, store = encode(phi)
-    f2, store = encode_dynamics(g, store)
-    f = (f1 & f2).simplify()
+
+    if counter_examples is None:
+        counter_examples = [{}]
+
+    f = TRUE()
+    store = {}
+    for i, ce in enumerate(counter_examples):
+        # Need to inline counter example .
+        store.update(counter_example_store(g.times, ce))
+        f1, store = encode(phi, store)
+        f2, store = encode_dynamics(g, store)
+        f3 = f1 & f2
+
+        # Create new variable names to avoid conflicts.
+        subs = counter_example_subs(g, store, ce) if i > 0 else {}
+        f &= (f1 & f2).substitute(subs)
+
     model = get_model(f)
+
 
     if model is None:
         return Result(False, None, None)

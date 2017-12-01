@@ -48,11 +48,12 @@ context = {
 
     # Rules
     parse("PaperBeatsRock"):
-    parse("(xRock) -> (~(yPaper))"),
+    parse("(yPaper) -> (~(xRock))"),
     parse("ScissorsBeatsPaper"):
-    parse("(xPaper) -> (~(yScissors))"),
+    parse("(yScissors) -> (~(xPaper))"),
     parse("RockBeatsScissors"):
-    parse("(xScissors) -> (~(yRock))"),
+    parse("(yRock) -> (~(xScissors))"),
+
     parse("Rules"):
     parse("(PaperBeatsRock) & (ScissorsBeatsPaper) & (RockBeatsScissors)"),
 
