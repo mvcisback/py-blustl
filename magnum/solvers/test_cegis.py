@@ -1,4 +1,6 @@
-from magnum.solvers.cegis2 import cegis_loop
+from pytest import raises
+
+from magnum.solvers.cegis2 import cegis_loop, MaxRoundsError
 
 def test_counter_examples():
     from magnum.examples.feasible_example2 import feasible_example as g
@@ -6,6 +8,9 @@ def test_counter_examples():
     res, counter_examples = cegis_loop(g)
     assert not res.feasible
     assert len(counter_examples) == 1
+    
+    with raises(MaxRoundsError):
+        cegis_loop(g, max_ce=0)
 
 
 # TODO
@@ -16,7 +21,13 @@ def test_rps():
     assert not res.feasible
     assert len(counter_examples) == 3
 
+    with raises(MaxRoundsError):
+        cegis_loop(g, use_smt=True, max_ce=0)
+
     # TODO
     res, counter_examples = cegis_loop(g)
     assert not res.feasible
     assert len(counter_examples) == 3
+
+    with raises(MaxRoundsError):
+        cegis_loop(g, max_ce=0)
