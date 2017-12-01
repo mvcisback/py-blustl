@@ -67,18 +67,16 @@ def create_scenario(g, i):
     def relabel(x):
         return x if i == 0 or x in g.model.vars.input else f"{x}#{i}"
 
-    def relabel_phi(phi):
-        return stl.ast.lineq_lens(phi).Each().terms.Each().id.modify(relabel)
+    relabel_phi = stl.ast.lineq_lens.terms.Each().id.modify(relabel)
 
-    # TODO: Fix once python-lenses fixes NamedTuple bug
-    g = bind(g).specs.set(Specs(*map(relabel_phi, g.specs)))
-    g = bind(g).model.vars.set(Vars(*map(lambda x: tuple(map(relabel, x)), g.model.vars)))
+    g = bind(g).specs.Each().modify(relabel_phi)
+    g = bind(g).model.vars.Each().Each().modify(relabel)
     return g
 
 
 def game_to_milp(g: Game, robust=True, counter_examples=None):
     # TODO: implement counter_example encoding
-    if counter_examples is None:
+    if not counter_examples:
         counter_examples = [{}]
 
     model = lp.LpProblem(DEFAULT_NAME, lp.LpMaximize)
