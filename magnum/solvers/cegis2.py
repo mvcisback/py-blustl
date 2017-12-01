@@ -19,6 +19,13 @@ def combined_solver(*args, **kwargs):
     return res
 
 
+def round_counter(max_rounds):
+    i = 0
+    while i < max_rounds:
+        yield i
+        i += 1
+
+
 def cegis_loop(g, max_rounds=10, use_smt=False, max_ce=float('inf')):
     """CEGIS for dominant/robust strategy.
     ∃u∀w . (x(u, w, t), u, w) ⊢ φ
@@ -28,7 +35,7 @@ def cegis_loop(g, max_rounds=10, use_smt=False, max_ce=float('inf')):
 
     counter_examples = []
     solve = smt.encode_and_run if use_smt else combined_solver
-    for i in range(max_rounds):
+    for _ in round_counter(max_rounds):
         play = solve(g, counter_examples=counter_examples)
         if not play.feasible:
             return Result(False, None, None), counter_examples
