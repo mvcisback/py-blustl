@@ -28,7 +28,7 @@ def mpc_games(g):
 def solutions_to_stl(inputs, solutions, dt):
     def _lineq(var_t_sol):
         var, (t, sol) = var_t_sol
-        phi = stl.parse(f"{var} = {sol[var][dt*t]}")
+        phi = stl.parse(f"{var} = {sol[var][dt*t]:f}")
         return stl.utils.next(phi, i=t)
 
     timed_solutions = enumerate(solutions)
@@ -42,6 +42,11 @@ def mpc(orig: Game, *, endless=True):
         g = bind(g).specs.learned.modify(
             lambda x: x & solutions_to_stl(
                 fn.cat(g.model.vars), solutions, g.model.dt))
+
+
+        # Forget about initial condition
+        if i > 0:
+            g = bind(g).specs.learned.set(stl.TOP)
 
         # TODO: check if we can reuse/extend counter_examples
         res, _ = solve(g)
