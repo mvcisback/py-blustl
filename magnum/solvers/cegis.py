@@ -1,3 +1,6 @@
+from itertools import product
+
+import stl
 import funcy as fn
 from lenses import lens
 
@@ -25,7 +28,7 @@ def round_counter(max_rounds):
         i += 1
 
 
-def solve(g, max_rounds=10, use_smt=False, max_ce=float('inf')):
+def solve(g, max_rounds=4, use_smt=False, max_ce=float('inf')):
     """CEGIS for dominant/robust strategy.
     ∃u∀w . (x(u, w, t), u, w) ⊢ φ
     """
@@ -54,3 +57,21 @@ def solve(g, max_rounds=10, use_smt=False, max_ce=float('inf')):
     raise MaxRoundsError
 
 
+def encode_refuted_rec(refuted_input, radius, times):
+    def _encode_refuted(name_time):
+        u, t = name_time
+        val = refuted_input[u][t]
+        lo, hi = val - radius, val + radius
+        phi = stl.BOT
+        if lo > 0:
+            phi |= stl.parse(f'{u} > {lo}')
+
+        if hi < 1:
+            phi |= stl.parse(f'{u} < {hi}')
+
+        if phi == stl.BOT:
+            return stl.TOP
+        else:
+            return stl.utils.next(phi, i=t)
+    
+    return stl.andf(*map(_encode_refuted, product(refuted_input.keys(), times)))
