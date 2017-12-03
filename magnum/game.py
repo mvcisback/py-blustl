@@ -72,7 +72,11 @@ class Game(NamedTuple):
     def times(self):
         return range(ceil(self.model.H/self.model.dt) + 1)
 
-
     @property
     def scaled_times(self):
         return [self.model.dt*t for t in self.times]
+
+    def new_horizon(self, H):
+        g = bind(self).model.H.modify(lambda x: x+H)
+        g = bind(g).specs.obj.modify(lambda x: stl.alw(x, lo=0, hi=H))
+        return g
