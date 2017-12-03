@@ -53,8 +53,7 @@ def solve(g, max_rounds=4, use_smt=False, max_ce=float('inf'),
             counter_examples.append(move)
         elif refuted_recs:
             phi = encode_refuted_rec(solution, 0.0001, g.times, dt=g.model.dt)
-            pass
-            
+            g = bind(g).specs.learned.modify(lambda x: x & phi)
 
     raise MaxRoundsError
 
@@ -64,16 +63,16 @@ def encode_refuted_rec(refuted_input, radius, times, dt=1):
         u, t = name_time
         val = refuted_input[u][dt*t]
         lo, hi = val - radius, val + radius
-        phi = stl.TOP
+        phi = stl.BOT
         if lo > 0:
-            phi &= stl.parse(f'{u} < {lo}')
+            phi |= stl.utils.next(stl.parse(f'{u} < {lo}'), i=t) 
 
         if hi < 1:
-            phi &= stl.parse(f'{u} > {hi}')
+            phi |= stl.utils.next(stl.parse(f'{u} > {hi}'), i=t)
 
-        if phi == stl.TOP:
-            return stl.BOT
+        if phi == stl.BOT:
+            return stl.TOP
         else:
-            return stl.utils.next(phi, i=t)
+            return phi
     
     return stl.orf(*map(_encode_refuted, product(refuted_input.keys(), times)))

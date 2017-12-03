@@ -27,7 +27,6 @@ def counter(func):
 @counter
 def z(x: "SL", g, i):
     # TODO: come up with better function name    
-    kwargs = {"name": f"r{i}"}
     if isinstance(x[0], str) and isinstance(x[1], int):
         if x[0] in set(g.model.vars.input) | set(g.model.vars.env):
             lo, hi = 0, 1
@@ -35,8 +34,9 @@ def z(x: "SL", g, i):
             lo = hi = None
 
         kwargs = {'name': f"{x[0]}_{x[1]}", 'lb': lo, 'ub': hi}
-        
-    r_var = Variable(**kwargs)
+        return (Variable(**kwargs),)
+
+    r_var = Variable(name=f"r{i}")
 
     if not isinstance(x, (stl.And, stl.Or)):
         return (r_var, )
@@ -76,15 +76,19 @@ def _(psi, s, t):
         float(term.coeff) * s[(term.id, t)][0] for term in psi.terms)
     y = s[stl.utils.next(psi, t)][0]
     if psi.op in (">", ">="):
-        yield Constraint(x - y, ub=psi.const, lb=psi.const), psi
+        expr = x - y
     elif psi.op in ("<", "<="):
-        yield Constraint(x + y, ub=psi.const, lb=psi.const), psi
+        expr = x + y
     else:
         raise NotImplementedError
-        
+    constr = Constraint(expr, ub=psi.const, lb=psi.const)
+    yield constr, psi
 
 
 def encode_op(phi: "SL", s, t, *, k: Kind, isor: bool):
+    for psi in phi.args:
+        yield from encode(psi, s, t)
+
     r_var, bool_vars = s[phi]
     bool_vars = dict(bool_vars)
     # At most one of the bool vars is active (chosen var)
@@ -101,10 +105,6 @@ def encode_op(phi: "SL", s, t, *, k: Kind, isor: bool):
             yield Constraint(r_var - e, ub=0), k[0]
         yield Constraint(e - (1 - bool_vars[psi]) * M - r_var, ub=0), phi
         yield Constraint(e + M * (1 - bool_vars[psi]) - r_var, lb=0), phi
-
-
-    for psi in phi.args:
-        yield from encode(psi, s, t)
 
 
 encode.register(stl.Or)(partial(encode_op, k=(K.OR, K.OR_TOTAL), isor=True))

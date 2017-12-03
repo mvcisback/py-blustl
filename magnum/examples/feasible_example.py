@@ -7,8 +7,7 @@ import numpy as np
 ## Setup the Model
 
 model = G.Model(
-    #dt=0.01,
-    dt=0.5,
+    dt=1,
     H=1,
     vars=G.Vars(state=("x", ), input=("u", ), env=()),
     dyn=G.Dynamics(A=np.array([[0]]), B=np.array([[10]]), C=np.array([[]])))
