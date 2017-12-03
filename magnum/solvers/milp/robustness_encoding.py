@@ -18,17 +18,20 @@ def counter(func):
     def _func(*args, **kwargs):
         nonlocal i
         i += 1
-        return func(i, *args, **kwargs)
+        return func(*args, i=i, **kwargs)
 
     return _func
 
 
 @counter
-def z(i, x: "SL"):
+def z(x: "SL", g, i):
     # TODO: come up with better function name    
     kwargs = {"name": f"r{i}"}
     if isinstance(x[0], str) and isinstance(x[1], int):
         kwargs = {'name': f"{x[0]}_{x[1]}"}
+        if x[0] in set(g.model.vars.input) | set(g.model.vars.env):
+            kwargs.update({'lowBound': 0, 'upBound': 1})
+
         
     r_var = lp.LpVariable(cat=C.Real.value, **kwargs)
 

@@ -21,9 +21,9 @@ def _(psi, s, t):
     if psi.op == "=":
         yield x == psi.const, K.PRED_EQ
     elif psi.op == "<":
-        yield x < psi.const, K.PRED_EQ
+        yield x <= psi.const, K.PRED_EQ
     elif psi.op == ">":
-        yield x > psi.const, K.PRED_EQ
+        yield x >= psi.const, K.PRED_EQ
     elif psi.op == "<=":
         yield x <= psi.const, K.PRED_EQ
     elif psi.op == ">=":
@@ -37,5 +37,17 @@ def _(phi, s, t):
 
 @encode.register(stl.And)
 def _(phi, s, t):
+    for psi in phi.args:
+        yield from encode(psi, s, t)
+
+
+@encode.register(stl.Or)
+def _(phi, s, t):
+    z_phi = s[phi][0]
+    elems = [s[psi][0] for psi in phi.args]
+
+    yield from ((z_phi >= e, K.OR) for e in elems)
+    yield sum(elems) >=  z_phi, K.OR_TOTAL
+
     for psi in phi.args:
         yield from encode(psi, s, t)

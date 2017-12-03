@@ -23,16 +23,7 @@ context = {
 spec = G.Specs(
     obj=stl.parse("ReachFive").inline_context(context),
     init=stl.parse("Init").inline_context(context),
-    dyn=stl.TOP,
     learned=stl.TOP,
-    bounds=stl.parse("G((u <= 1) & (u >= 0))", H=model.H),
 )
 
-meta = G.Meta(
-    pri={},
-    names={},
-    drdu=None,
-    drdw=None,
-)
-
-feasible_example = G.Game(specs=spec, model=model, meta=meta)
+feasible_example = G.Game(specs=spec, model=model)

@@ -81,7 +81,7 @@ def game_to_milp(g: Game, robust=True, counter_examples=None):
         counter_examples = [{}]
 
     model = lp.LpProblem(DEFAULT_NAME, lp.LpMaximize)
-    store = keydefaultdict(rob_encode.z)
+    store = keydefaultdict(lambda x: rob_encode.z(x, g))
     # Add counter examples to store
     for i, ce in enumerate(counter_examples):
         store.update(counter_example_store(g, ce, i))

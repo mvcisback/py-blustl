@@ -2,7 +2,7 @@ from itertools import product
 
 import stl
 import funcy as fn
-from lenses import lens
+from lenses import bind
 
 import magnum
 from magnum.solvers import smt
@@ -28,7 +28,8 @@ def round_counter(max_rounds):
         i += 1
 
 
-def solve(g, max_rounds=4, use_smt=False, max_ce=float('inf')):
+def solve(g, max_rounds=4, use_smt=False, max_ce=float('inf'), 
+          refuted_recs=True):
     """CEGIS for dominant/robust strategy.
     ∃u∀w . (x(u, w, t), u, w) ⊢ φ
     """
@@ -50,28 +51,29 @@ def solve(g, max_rounds=4, use_smt=False, max_ce=float('inf')):
         move = fn.project(counter.solution, g.model.vars.env)
         if len(counter_examples) < max_ce:
             counter_examples.append(move)
-        else:
-            # TODO: grow learned clauses
+        elif refuted_recs:
+            phi = encode_refuted_rec(solution, 0.0001, g.times, dt=g.model.dt)
             pass
+            
 
     raise MaxRoundsError
 
 
-def encode_refuted_rec(refuted_input, radius, times):
+def encode_refuted_rec(refuted_input, radius, times, dt=1):
     def _encode_refuted(name_time):
         u, t = name_time
-        val = refuted_input[u][t]
+        val = refuted_input[u][dt*t]
         lo, hi = val - radius, val + radius
-        phi = stl.BOT
+        phi = stl.TOP
         if lo > 0:
-            phi |= stl.parse(f'{u} >= {lo}')
+            phi &= stl.parse(f'{u} < {lo}')
 
         if hi < 1:
-            phi |= stl.parse(f'{u} <= {hi}')
+            phi &= stl.parse(f'{u} > {hi}')
 
-        if phi == stl.BOT:
-            return stl.TOP
+        if phi == stl.TOP:
+            return stl.BOT
         else:
             return stl.utils.next(phi, i=t)
     
-    return stl.andf(*map(_encode_refuted, product(refuted_input.keys(), times)))
+    return stl.orf(*map(_encode_refuted, product(refuted_input.keys(), times)))
