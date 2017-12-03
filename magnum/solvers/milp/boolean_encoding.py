@@ -2,6 +2,7 @@ import operator as op
 from functools import singledispatch
 
 import stl
+from optlang import Constraint
 
 from magnum.game import Game
 from magnum.constraint_kinds import Kind as K, Kind
@@ -19,15 +20,12 @@ def _(psi, s, t):
             psi.terms)
     # TODO: cleanup
     if psi.op == "=":
-        yield x == psi.const, K.PRED_EQ
-    elif psi.op == "<":
-        yield x <= psi.const, K.PRED_EQ
-    elif psi.op == ">":
-        yield x >= psi.const, K.PRED_EQ
-    elif psi.op == "<=":
-        yield x <= psi.const, K.PRED_EQ
-    elif psi.op == ">=":
-        yield x >= psi.const, K.PRED_EQ
+        lb = ub = psi.const
+    elif psi.op in ("<", "<="):
+        lb, ub = None, psi.const
+    elif psi.op in (">", ">="):
+        lb, ub = psi.const, None
+    yield Constraint(x, lb=lb, ub=ub), psi
 
 
 @encode.register(stl.Next)

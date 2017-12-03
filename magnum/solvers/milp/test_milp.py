@@ -1,5 +1,6 @@
 import stl
 import traces
+import pytest
 
 from magnum.solvers.milp import milp
 
@@ -17,13 +18,13 @@ def test_feasible():
     phi = g.spec_as_stl(discretize=False)
     dt = g.model.dt
     assert pointwise_sat(phi, dt=dt)(res.solution)
-    assert res.cost == 5
+    assert pytest.approx(res.cost) == 5
     
     res = milp.encode_and_run(g.invert())
     phi = g.spec_as_stl(discretize=False)
     dt = g.model.dt
     assert not pointwise_sat(phi, dt=dt)(res.solution)
-    assert res.cost == 5
+    assert pytest.approx(res.cost) == 5
 
     
 def test_one_player_rps_feasibility():
@@ -34,7 +35,7 @@ def test_one_player_rps_feasibility():
     dt = g.model.dt
     assert pointwise_sat(phi, dt=dt)(res.solution)
     
-    assert res.cost == 10
+    assert pytest.approx(res.cost) == 10
 
     g = g.invert()
     res = milp.encode_and_run(g)
@@ -42,7 +43,7 @@ def test_one_player_rps_feasibility():
     dt = g.model.dt
     assert pointwise_sat(phi, dt=dt)(res.solution)
     
-    assert res.cost == 10
+    assert pytest.approx(res.cost) == 10
 
 
 def test_one_player_rps_robustness():
@@ -62,7 +63,7 @@ def test_rps_counter_examples():
 
     res = milp.encode_and_run(g, counter_examples=ces)
     assert res.feasible
-    assert res.cost == 10
+    assert pytest.approx(res.cost) == 10
     phi = stl.parse('X((x >= 10) & (x <= 50))')
     assert pointwise_sat(phi, dt=g.model.dt)(res.solution)
 
@@ -70,14 +71,14 @@ def test_rps_counter_examples():
     ces.append({'w': traces.TimeSeries([(0, 40/60)])})
     res = milp.encode_and_run(g, counter_examples=ces)
     assert res.feasible
-    assert res.cost == 10
+    assert pytest.approx(res.cost) == 10
     phi = stl.parse('X((x >= 30) & (x <= 50))')
     assert pointwise_sat(phi, dt=g.model.dt)(res.solution)
 
     ces.append({'w': traces.TimeSeries([(0, 0)])})
     res = milp.encode_and_run(g, counter_examples=ces)
     assert not res.feasible
-    assert res.cost == 0
+    assert pytest.approx(res.cost) == 0
     phi = stl.parse('X((x = 10) | (x = 30) | (x = 50))')
     assert pointwise_sat(phi, dt=g.model.dt)(res.solution)
 
@@ -85,19 +86,19 @@ def test_rps_counter_examples():
 
     res = milp.encode_and_run(g)
     assert res.feasible
-    assert res.cost == 10
+    assert pytest.approx(res.cost) == 10
     
     ces = [{'u': traces.TimeSeries([(0, 20/60)])}]
 
     res = milp.encode_and_run(g, counter_examples=ces)
     assert res.feasible
-    assert res.cost == 10
+    assert pytest.approx(res.cost) == 10
 
     ces = [{'u': traces.TimeSeries([(0, 40/60)])}]
 
     res = milp.encode_and_run(g, counter_examples=ces)
     assert res.feasible
-    assert res.cost == 10
+    assert pytest.approx(res.cost) == 10
 
     ces = [({'u': traces.TimeSeries([(0, 0)])})]
 
