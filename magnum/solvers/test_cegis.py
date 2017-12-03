@@ -41,12 +41,12 @@ def test_encode_refuted_rec():
         'u2': traces.TimeSeries([(0, 0.5)])
     }
     phi = encode_refuted_rec(refuted, 0.2, [0])
-    psi1 = stl.parse('u1 < 0.2')
-    psi2 = stl.parse('(u2 > 0.3) | (u2 < 0.7)')
+    psi1 = stl.parse('u1 <= 0.2')
+    psi2 = stl.parse('(u2 >= 0.3) | (u2 <= 0.7)')
     assert phi == psi1 & psi2
 
-    psi3 = stl.parse('X(u1 > 0.8)')
-    psi4 = stl.parse('X((u2 > 0.3) | (u2 < 0.7))')
+    psi3 = stl.parse('X(u1 >= 0.8)')
+    psi4 = stl.parse('X((u2 >= 0.3) | (u2 <= 0.7))')
     phi = encode_refuted_rec(refuted, 0.2, [1])
     assert phi == psi3 & psi4
 

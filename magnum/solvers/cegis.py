@@ -64,10 +64,10 @@ def encode_refuted_rec(refuted_input, radius, times):
         lo, hi = val - radius, val + radius
         phi = stl.BOT
         if lo > 0:
-            phi |= stl.parse(f'{u} > {lo}')
+            phi |= stl.parse(f'{u} >= {lo}')
 
         if hi < 1:
-            phi |= stl.parse(f'{u} < {hi}')
+            phi |= stl.parse(f'{u} <= {hi}')
 
         if phi == stl.BOT:
             return stl.TOP
