@@ -2,8 +2,12 @@ import stl
 import traces
 from pytest import raises
 from lenses import bind
+from magnum.solvers import smt
+import funcy as fn
+import numpy as np
 
-from magnum.solvers.cegis import solve, MaxRoundsError, encode_refuted_rec
+from magnum.solvers.cegis import solve, MaxRoundsError, encode_refuted_rec, combined_solver
+from magnum.solvers.search_oracle import binary_random_search
 
 def test_counter_examples():
     from magnum.examples.feasible_example2 import feasible_example as g
@@ -14,6 +18,26 @@ def test_counter_examples():
     
     with raises(MaxRoundsError):
         solve(g, max_ce=0)
+
+def test_binary_search():
+    from magnum.examples.rock_paper_scissors import rps as g
+    use_smt = True
+    g_inv = g.invert()
+
+
+    solve = smt.encode_and_run if use_smt else combined_solver
+    play = solve(g, counter_examples=[])
+    solution = fn.project(play.solution, g.model.vars.input)
+    counter = solve(g_inv, counter_examples=[solution])
+    move = fn.project(counter.solution, g.model.vars.env)
+
+    x0 = np.array([[play.solution[k][0]]
+                   for k in g.model.vars.state])
+
+    r_high = binary_random_search(g=g, u_star=solution, w_star=move, x0=x0)
+
+
+
 
 
 # TODO
