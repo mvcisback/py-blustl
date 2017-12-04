@@ -7,6 +7,7 @@ from lenses import bind
 import magnum
 from magnum.solvers import smt
 from magnum.solvers import milp
+from magnum.utils import encode_refuted_rec
 
 
 class MaxRoundsError(Exception):
@@ -56,23 +57,3 @@ def solve(g, max_rounds=4, use_smt=False, max_ce=float('inf'),
             g = bind(g).specs.learned.modify(lambda x: x & phi)
 
     raise MaxRoundsError
-
-
-def encode_refuted_rec(refuted_input, radius, times, dt=1):
-    def _encode_refuted(name_time):
-        u, t = name_time
-        val = refuted_input[u][dt*t]
-        lo, hi = val - radius, val + radius
-        phi = stl.BOT
-        if lo > 0:
-            phi |= stl.utils.next(stl.parse(f'{u} < {lo}'), i=t) 
-
-        if hi < 1:
-            phi |= stl.utils.next(stl.parse(f'{u} > {hi}'), i=t)
-
-        if phi == stl.BOT:
-            return stl.TOP
-        else:
-            return phi
-    
-    return stl.orf(*map(_encode_refuted, product(refuted_input.keys(), times)))

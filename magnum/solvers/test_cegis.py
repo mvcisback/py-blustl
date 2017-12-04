@@ -1,13 +1,13 @@
 import stl
 import traces
-from pytest import raises
+from pytest import raises, approx
 from lenses import bind
 from magnum.solvers import smt
 import funcy as fn
 import numpy as np
 
 from magnum.solvers.cegis import solve, MaxRoundsError, encode_refuted_rec, combined_solver
-from magnum.solvers.search_oracle import binary_random_search
+from magnum.solvers.search_oracle import find_refuted_radius, smt_radius_oracle
 
 def test_counter_examples():
     from magnum.examples.feasible_example2 import feasible_example as g
@@ -19,25 +19,28 @@ def test_counter_examples():
     with raises(MaxRoundsError):
         solve(g, max_ce=0)
 
-def test_binary_search():
+
+def test_smt_radius_oracle():
     from magnum.examples.rock_paper_scissors import rps as g
-    use_smt = True
-    g_inv = g.invert()
+    play = {'u': traces.TimeSeries([(0, 0)])}
+    counter = {'w': traces.TimeSeries([(0, 20/60)])}
+    
+    x0 = np.zeros(2)
+    oracle = smt_radius_oracle(g=g, play=play, counter=counter)
+    
+    assert not oracle(r=5/60)
+    assert not oracle(r=9/60)
+    assert oracle(r=11/60)
+    assert oracle(r=1)
 
 
-    solve = smt.encode_and_run if use_smt else combined_solver
-    play = solve(g, counter_examples=[])
-    solution = fn.project(play.solution, g.model.vars.input)
-    counter = solve(g_inv, counter_examples=[solution])
-    move = fn.project(counter.solution, g.model.vars.env)
-
-    x0 = np.array([[play.solution[k][0]]
-                   for k in g.model.vars.state])
-
-    r_high = binary_random_search(g=g, u_star=solution, w_star=move, x0=x0)
-
-
-
+def test_find_refuted_radius():
+    from magnum.examples.rock_paper_scissors import rps as g
+    play = {'u': traces.TimeSeries([(0, 0)])}
+    counter = {'w': traces.TimeSeries([(0, 20/60)])}
+    
+    r = find_refuted_radius(g, play, counter)
+    assert approx(1 - r) == 0
 
 
 # TODO
@@ -66,7 +69,7 @@ def test_rpss():
     res, counter_examples = solve(g)
     assert res.feasible
     assert len(counter_examples) == 3
-    assert res.cost == 0.5
+    assert approx(res.cost) == 0.5
 
 
 def test_encode_refuted_rec():

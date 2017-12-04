@@ -75,6 +75,16 @@ def _encode_ap(psi, s: dict, t):
     return eq
 
 
+@_encode.register(type(stl.TOP))
+def _encode_top(*args, **kwargs):
+    return TRUE()
+
+
+@_encode.register(type(stl.BOT))
+def _encode_top(*args, **kwargs):
+    return FALSE()
+
+
 @_encode.register(stl.And)
 def _encode_and(psi, s: dict, t):
     return And(*(_encode(x, s, t) for x in psi.args))
