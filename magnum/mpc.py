@@ -4,7 +4,7 @@ from collections import deque
 from itertools import product
 
 import stl
-import sympy as sym
+import traces
 import funcy as fn
 from lenses import bind
 
@@ -16,7 +16,7 @@ def horizons(N, dt):
     i = 0
     while True:
         yield i*dt
-        if i < 2*N:
+        if i < N-1:
             i += 1
 
 
@@ -25,28 +25,25 @@ def mpc_games(g):
         yield g.new_horizon(dH)
 
 
-def solutions_to_stl(inputs, solutions, dt):
-    def _lineq(var_t_sol):
-        var, (t, sol) = var_t_sol
-        phi = stl.parse(f"{var} = {sol[var][dt*t]:f}")
-        return stl.utils.next(phi, i=t)
+def solution_to_stl(inputs, sol, dt, times, offset=False):
+    def _lineq(var_t):
+        var, i = var_t
+        t = i+1 if offset else i
+        phi = stl.parse(f"{var} = {sol[var][dt*(t)]:f}")
+        return stl.utils.next(phi, i=i)
 
-    timed_solutions = enumerate(solutions)
-
-    return stl.andf(*map(_lineq, product(inputs, timed_solutions)))
+    return stl.andf(*map(_lineq, product(inputs, times)))
 
 
 def mpc(orig: Game, *, endless=True):
-    solutions = deque(maxlen=2*len(orig.times))
+    solution_spec = stl.TOP
+    N = len(orig.times)
     for i, g in enumerate(mpc_games(orig)):
-        g = bind(g).specs.learned.modify(
-            lambda x: x & solutions_to_stl(
-                fn.cat(g.model.vars), solutions, g.model.dt))
-
+        g = bind(g).specs.learned.modify(lambda x: x & solution_spec)
 
         # Forget about initial condition
         if i > 0:
-            g = bind(g).specs.learned.set(stl.TOP)
+            g = bind(g).specs.init.set(stl.TOP)
 
         # TODO: check if we can reuse/extend counter_examples
         res, _ = solve(g)
@@ -54,7 +51,15 @@ def mpc(orig: Game, *, endless=True):
         if not res.feasible:
             return
 
-        yield res.solution
-        solutions.append(res.solution)
+        if i+1 < N:
+            times = range(i+1)
+            offset=False
+        else:
+            times = range(N)
+            offset=True
 
-    
+        inputs = g.model.vars.state
+        dt = g.model.dt
+        solution_spec = solution_to_stl(inputs, res.solution, dt, times, offset=offset)
+
+        yield res.solution
