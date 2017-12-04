@@ -2,7 +2,7 @@
 
 import operator as op
 from operator import itemgetter as ig
-from itertools import product
+from itertools import product, chain
 from functools import singledispatch
 
 import funcy as fn
@@ -209,9 +209,19 @@ def extract_ts(name, model, g, store):
     return ts
 
 
+def create_input_bounds(g):
+    def _lineq(name_t):
+        name, t = name_t
+        return stl.utils.next(stl.parse("(u >= 0) & (u <= 1)"), i=t)
+
+    inputs = chain(g.model.vars.input, g.model.vars.env)
+    return stl.andf(*(map(_lineq, product(inputs, g.times))))
+
+
 def encode_and_run(g, counter_examples=None):
     # TODO: add bounds
     phi = g.spec_as_stl()
+    phi &= create_input_bounds(g)
 
     if not counter_examples:
         counter_examples = [{}]
