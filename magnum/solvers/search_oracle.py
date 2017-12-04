@@ -6,9 +6,9 @@ import numpy as np
 import traces
 from functools import reduce
 
-def random_series(g):
-    times = (g.model.dt*t for t in g.times)
-    return traces.TimeSeries(zip(times, np.random.random(len(g.times))))
+random_series = lambda g: traces.TimeSeries(zip(g.scaled_times,
+                                        np.random.random(len(g.scaled_times))))
+
 
 def extract_t(controls, w_star, t):
     controls_matrix = np.array([np.array(control_i).T[1] for control_i
@@ -25,7 +25,7 @@ def check_sat(w_star, u_star, r, g, num_samples=100):
     B = dt * B
     C = dt * C
 
-    times = (g.model.dt * t for t in g.times)
+    times = g.scaled_times
     phi = g.spec_as_stl(dizcretize=False)
     phi_eval = stl.boolean_eval.pointwise_sat(phi)
 
@@ -34,7 +34,7 @@ def check_sat(w_star, u_star, r, g, num_samples=100):
                 g.model.vars.input}
         iterate_t = lambda t: extract_t(controls=controls, w_star=w_star, t=t)
         x_ts = reduce(lambda x, cont: A * x[-1] + B * cont['u'] + C(cont['w']),
-                  [iterate_t in g.times], [x0])
+                  map(iterate_t, g.times), [x0])
 
         x_ts = traces.TimeSeries(zip(times, x_ts))
         x = {name: x_ts[i] for name, i in zip(g.model.vars.state,
