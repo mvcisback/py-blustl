@@ -1,140 +1,78 @@
-from itertools import cycle
+from itertools import product
 
 import stl
 import funcy as fn
-from lenses import lens
+from lenses import bind
 
 import magnum
-from magnum.solvers.milp import encode_and_run as predict
-from magnum.utils import project_solution_stl
-
-from enum import Enum, auto
+from magnum.solvers import smt
+from magnum.solvers import milp
 
 
-class CegisState(Enum):
-    INITIAL_LOOP = auto()
-    U_DOMINANT = auto()
-    W_DOMINANT = auto()
-    W_NOT_DOMINANT = auto()
-    U_NOT_DOMINANT = auto()
-    MAYBE_REACTIVE = auto()
+class MaxRoundsError(Exception):
+    pass
 
 
-TERMINATION_STATES = {
-    CegisState.MAYBE_REACTIVE, CegisState.W_DOMINANT, CegisState.U_DOMINANT
-}
+def combined_solver(*args, **kwargs):
+    res = milp.encode_and_run(*args, **kwargs)
+    # If milp can't decide use smt
+    if res.cost == 0:
+        res = smt.encode_and_run(*args, **kwargs)
+    return res
 
 
-def cegis(g):
-    converged = lambda x: x[1] in TERMINATION_STATES
-    response, state = fn.first(filter(converged, cegis_loop(g)))
-    return state if state == CegisState.U_DOMINANT else None
+def round_counter(max_rounds):
+    i = 0
+    while i < max_rounds:
+        yield i
+        i += 1
 
 
-def update_state(response, is_p1, converged, state):
-    """CEGIS State Machine"""
-    if not response.feasible:
-        if is_p1:
-            return CegisState.W_DOMINANT
-        else:
-            return CegisState.U_DOMINANT
-    elif converged:
-        if is_p1:
-            if state == W_NOT_DOMINANT:
-                return CegisState.MAYBE_REACTIVE
-            else:
-                return CegisState.U_NOT_DOMINANT
-        else:
-            if state == U_NOT_DOMINANT:
-                return CegisState.MAYBE_REACTIVE
-            else:
-                return CegisState.W_NOT_DOMINANT
-    else:
-        return state
-
-
-def cegis_loop(g):
+def solve(g, max_rounds=4, use_smt=False, max_ce=float('inf'), 
+          refuted_recs=True):
     """CEGIS for dominant/robust strategy.
     ∃u∀w . (x(u, w, t), u, w) ⊢ φ
     """
     # Create player for sys and env resp.
-    p1 = player(g)
-    p2 = player(magnum.game.invert_game(g))
+    g_inv = g.invert()
 
-    # Start Co-Routines
-    next(p1)
-    next(p2)
+    counter_examples = []
+    solve = smt.encode_and_run if use_smt else combined_solver
+    for _ in round_counter(max_rounds):
+        play = solve(g, counter_examples=counter_examples)
+        if not play.feasible:
+            return play, counter_examples
+        
+        solution = fn.project(play.solution, g.model.vars.input)
+        counter = solve(g_inv, counter_examples=[solution])
+        if not counter.feasible:
+            return play, counter_examples
 
-    # Take turns providing counter examples
-    response = set()
-    state = CegisState.INITIAL_LOOP
-    for p in cycle([p1, p2]):
-        # Tell p about previous response and get p's response.
-        response, converged = p.send(response)
+        move = fn.project(counter.solution, g.model.vars.env)
+        if len(counter_examples) < max_ce:
+            counter_examples.append(move)
+        elif refuted_recs:
+            phi = encode_refuted_rec(solution, 0.0001, g.times, dt=g.model.dt)
+            g = bind(g).specs.learned.modify(lambda x: x & phi)
 
-        # Update State
-        state = update_state(response, p == p1, converged, state)
-
-        yield response, state
-
-
-def banned_square(prev_input, cost, g):
-    if g.meta.dxdu == 0:
-        return prev_input
-
-    R = cost / g.meta.dxdu
-    delta = R - prev_input.const
-    lower = lens(lens(prev_input).op.set("<")).const.set(delta)
-    upper = lens(lens(prev_input).op.set(">")).const.set(-delta)
-    return lower & upper
+    raise MaxRoundsError
 
 
-def milp_banned_square(prev_input, cost, g):
-    # TODO: encode milp for following problem
-    # Minimize Radius R
-    # s.t
-    # R >= cost/g.meta.dxdu
-    # |u - u'|_inf < R
-    # r(u, w') >= 0
-    return 0
+def encode_refuted_rec(refuted_input, radius, times, dt=1):
+    def _encode_refuted(name_time):
+        u, t = name_time
+        val = refuted_input[u][dt*t]
+        lo, hi = val - radius, val + radius
+        phi = stl.BOT
+        if lo > 0:
+            phi |= stl.utils.next(stl.parse(f'{u} < {lo}'), i=t) 
 
+        if hi < 1:
+            phi |= stl.utils.next(stl.parse(f'{u} > {hi}'), i=t)
 
-def player(g):
-    """Player co-routine.
-    Receives counter example and then returns response. 
-
-    TODO: Also converge if have epslion convering of space
-    """
-    converged = False
-    learned_lens = lens(g).spec.learned
-    inputs, adv_inputs = g.model.vars.input, g.model.vars.env
-
-    counter_example = yield
-    # We must be the first player. Give unconstrained response.
-    if not counter_example:
-        counter_example = yield predict(g), converged
-    banned_inputs = stl.BOT
-    while True:
-        # They gave a response w, we cannot use previous solutions.
-        sol = counter_example.solution
-        cost = counter_example.cost
-        prev_inputs = project_solution_stl(sol, inputs, g.model.t)
-        response = stl.andf(*project_solution_stl(sol, adv_inputs, g.model.t))
-        # Step 1) prev input had counter strategy, so ban it.
-        if prev_inputs:
-            banned = (banned_square(i, cost, g) for i in prev_inputs)
-            banned_inputs |= stl.andf(*banned)
-
-        # Step 2) respond to w's response.
-        learned = response & ~banned_inputs
-        prediction = predict(learned_lens.set(learned))
-
-        # Step 3) Consider old inputs upon failure
-        if not prediction.feasible:
-            converged = True
-            if banned_inputs is not stl.BOT:
-                learned = response & banned_inputs
-                prediction = predict(learned_lens.set(learned))
-
-        # Step 4) Yield response
-        counter_example = yield prediction, converged
+        if phi == stl.BOT:
+            return stl.TOP
+        else:
+            return phi
+    
+    return stl.orf(*map(_encode_refuted, product(refuted_input.keys(), times)))

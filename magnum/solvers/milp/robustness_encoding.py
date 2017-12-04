@@ -1,10 +1,11 @@
+import sympy
 import operator as op
 from functools import partial, singledispatch, wraps
 
 import stl
 import funcy as fn
 import numpy as np
-import pulp as lp
+from optlang import Variable, Constraint
 
 from magnum.game import Game
 from magnum.constraint_kinds import Kind as K, Kind
@@ -18,25 +19,30 @@ def counter(func):
     def _func(*args, **kwargs):
         nonlocal i
         i += 1
-        return func(i, *args, **kwargs)
+        return func(*args, i=i, **kwargs)
 
     return _func
 
 
 @counter
-def z(i, x: "SL"):
+def z(x: "SL", g, i):
     # TODO: come up with better function name    
-    kwargs = {"name": f"r{i}"}
     if isinstance(x[0], str) and isinstance(x[1], int):
-        kwargs = {'name': f"{x[0]}_{x[1]}"}
-        
-    r_var = lp.LpVariable(cat=C.Real.value, **kwargs)
+        if x[0] in set(g.model.vars.input) | set(g.model.vars.env):
+            lo, hi = 0, 1
+        else:
+            lo = hi = None
+
+        kwargs = {'name': f"{x[0]}_{x[1]}", 'lb': lo, 'ub': hi}
+        return (Variable(**kwargs),)
+
+    r_var = Variable(name=f"r{i}")
 
     if not isinstance(x, (stl.And, stl.Or)):
         return (r_var, )
 
     bool_vars = {
-        arg: lp.LpVariable(cat=C.Bool.value, name=f"p{i}_{j}")
+        arg: Variable(type='binary', name=f"p{i}_{j}")
         for j, arg in enumerate(x.args)
     }
     return (r_var, tuple(bool_vars.items()))
@@ -49,7 +55,7 @@ def encode(psi, s, t):
 
 @encode.register(stl.Neg)
 def _(phi, s, t):
-    yield s[phi][0] == -s[phi.arg][0], K.NEG
+    yield Constraint(s[phi][0] + s[phi.arg][0], lb=0, ub=0), K.NEG
     yield from encode(phi.arg, s, t)
 
 
@@ -68,35 +74,37 @@ def _(phi, s, t):
 def _(psi, s, t):
     x = sum(
         float(term.coeff) * s[(term.id, t)][0] for term in psi.terms)
-    y = s[stl.utils.next(psi, t)]
+    y = s[stl.utils.next(psi, t)][0]
     if psi.op in (">", ">="):
-        yield y == x - psi.const, K.PRED_EQ
+        expr = x - y
     elif psi.op in ("<", "<="):
-        yield y == psi.const - x, K.PRED_EQ
+        expr = x + y
     else:
         raise NotImplementedError
-        
+    constr = Constraint(expr, ub=psi.const, lb=psi.const)
+    yield constr, psi
 
 
 def encode_op(phi: "SL", s, t, *, k: Kind, isor: bool):
+    for psi in phi.args:
+        yield from encode(psi, s, t)
+
     r_var, bool_vars = s[phi]
     bool_vars = dict(bool_vars)
     # At most one of the bool vars is active (chosen var)
-    yield sum(bool_vars.values()) == 1, k[1]
+    constr = Constraint(sum(bool_vars.values()), ub=1, lb=1)
+    yield constr, k[1]
 
     # For each variable comput r and assert rel to psi r
-    elems = [s[psi] for psi in phi.args]
+    elems = [s[psi][0] for psi in phi.args]
     rel = op.ge if isor else op.le
     for psi, e in zip(phi.args, elems):
-        if len(e) > 1:
-            e = e[0]
-        yield rel(r_var, e), k[0]
-        yield e - (1 - bool_vars[psi]) * M <= r_var, k[0]
-        yield r_var <= e + M * (1 - bool_vars[psi]), k[0]
-
-
-    for psi in phi.args:
-        yield from encode(psi, s, t)
+        if isor:
+            yield Constraint(e - r_var, ub=0), k[0]
+        else:
+            yield Constraint(r_var - e, ub=0), k[0]
+        yield Constraint(e - (1 - bool_vars[psi]) * M - r_var, ub=0), phi
+        yield Constraint(e + M * (1 - bool_vars[psi]) - r_var, lb=0), phi
 
 
 encode.register(stl.Or)(partial(encode_op, k=(K.OR, K.OR_TOTAL), isor=True))
@@ -121,9 +129,10 @@ def encode_dynamics(g, store):
 def _encode_dynamics(A, B, C, var_lists, store, t):
     rhses = [row_to_smt(zip([a, b, c], var_lists), store, t)
                     for a, b, c in zip(A, B, C)]
-    lhses = [store[v, t+1] for v in var_lists[0]]
+    lhses = [store[v, t+1][0] for v in var_lists[0]]
 
-    yield from ((lhs == rhs, K.PRED_EQ) for lhs, rhs in zip(lhses, rhses))
+    yield from ((Constraint(lhs - rhs, lb=0, ub=0), (lhs, rhs)) 
+                for lhs, rhs in zip(lhses, rhses))
 
 
 def row_to_smt(rows_and_var_lists, store, t):

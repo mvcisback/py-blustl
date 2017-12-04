@@ -7,8 +7,7 @@ import numpy as np
 ## Setup the Model
 
 model = G.Model(
-    #dt=0.01,
-    dt=0.5,
+    dt=1,
     H=1,
     vars=G.Vars(state=("x", ), input=("u", ), env=()),
     dyn=G.Dynamics(A=np.array([[0]]), B=np.array([[10]]), C=np.array([[]])))
@@ -23,16 +22,7 @@ context = {
 spec = G.Specs(
     obj=stl.parse("ReachFive").inline_context(context),
     init=stl.parse("Init").inline_context(context),
-    dyn=stl.TOP,
     learned=stl.TOP,
-    bounds=stl.parse("G((u <= 1) & (u >= 0))", H=model.H),
 )
 
-meta = G.Meta(
-    pri={},
-    names={},
-    drdu=None,
-    drdw=None,
-)
-
-feasible_example = G.Game(specs=spec, model=model, meta=meta)
+feasible_example = G.Game(specs=spec, model=model)

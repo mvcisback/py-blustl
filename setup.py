@@ -12,9 +12,7 @@ setup(
         'funcy',
         'lenses',
         'py-stl',
-        'pulp',
-        #'pyeda',
-        'pandas',
+        'optlang',
     ],
     packages=find_packages(),
 )

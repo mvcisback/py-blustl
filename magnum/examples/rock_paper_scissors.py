@@ -1,10 +1,7 @@
 import stl
 
-from sympy import Symbol
-
 import magnum
 from magnum import game as G
-from magnum.solvers.cegis import cegis_loop
 
 import numpy as np
 
@@ -55,34 +52,12 @@ context = {
 
     parse("Rules"):
     parse("(PaperBeatsRock) & (ScissorsBeatsPaper) & (RockBeatsScissors)"),
-
-    # Bounds
-    parse("uBounds"):
-    parse("(u >= 0) & (u <= 1)"),
-    parse("wBounds"):
-    parse("(w >= 0) & (w <= 1)"),
 }
 
 spec = G.Specs(
     obj=stl.parse('G(Rules)', H=model.H).inline_context(context),
     learned=stl.TOP,
     init=stl.parse("Init").inline_context(context),
-    bounds=stl.parse("G((uBounds) & (wBounds))", 
-                     H=model.H).inline_context(context),
-    dyn=stl.TOP
 )
 
-A, B, C = model.dyn
-A = np.eye(A.shape[0]) + A
-L_u = magnum.utils.dynamics_lipschitz(A, B, model.H)
-L_w = magnum.utils.dynamics_lipschitz(A, C, model.H)
-L_x = stl.utils.linear_stl_lipschitz(spec.obj)
-
-meta = G.Meta(
-    pri={},
-    names={},
-    drdu=L_u * L_x,
-    drdw=L_w * L_x,
-)
-
-rps = G.Game(specs=spec, model=model, meta=meta)
+rps = G.Game(specs=spec, model=model)

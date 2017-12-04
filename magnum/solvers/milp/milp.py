@@ -8,21 +8,18 @@ from itertools import chain, product
 import operator as op
 from functools import partial
 
-import pulp as lp
 import funcy as fn
 import stl
 import traces
 from lenses import bind
 from funcy import cat, compose
+from optlang import Model, Variable, Constraint, Objective
 
 from magnum.game import Game, Specs, Vars
 from magnum.constraint_kinds import Kind as K
 from magnum.utils import Result
 from magnum.solvers.milp import robustness_encoding as rob_encode
 from magnum.solvers.milp import boolean_encoding as bool_encode
-
-
-DEFAULT_NAME = 'controller_synth'
 
 
 class keydefaultdict(defaultdict):
@@ -35,8 +32,7 @@ class keydefaultdict(defaultdict):
 
 
 def add_constr(model, constr, kind: K, i: int):
-    name = "{}{}".format(kind.name, i)
-    model.addConstraint(constr, name=name)
+    model.add(constr)
 
 
 def counter_example_store(g, ce, i):
@@ -80,8 +76,8 @@ def game_to_milp(g: Game, robust=True, counter_examples=None):
     if not counter_examples:
         counter_examples = [{}]
 
-    model = lp.LpProblem(DEFAULT_NAME, lp.LpMaximize)
-    store = keydefaultdict(rob_encode.z)
+    model = Model()
+    store = keydefaultdict(lambda x: rob_encode.z(x, g))
     # Add counter examples to store
     for i, ce in enumerate(counter_examples):
         store.update(counter_example_store(g, ce, i))
@@ -101,7 +97,7 @@ def game_to_milp(g: Game, robust=True, counter_examples=None):
 
     # TODO: support alternative objective functions
     J = store[obj][0] if isinstance(store[obj], tuple) else store[obj]
-    model.setObjective(J)
+    model.objective = Objective(J, direction='max')
     return model, store
 
 
@@ -109,23 +105,26 @@ def game_to_milp(g: Game, robust=True, counter_examples=None):
 
 def extract_ts(name, model, g, store):
     dt = g.model.dt
-    model = {x: x.value() for x in model.variables()}
-    ts = traces.TimeSeries(((dt*t, model[store[name, t][0]])
-                             for t in g.times if store[name, t][0] in model)
+    model = {k: v.primal for k, v in model.variables.items()}
+    ts = traces.TimeSeries(((dt*t, model[store[name, t][0].name])
+                            for t in g.times 
+                            if not isinstance(store[name, t][0], (float, int)) 
+                            and store[name, t][0].name in model)
                            , domain=(0, g.model.H))
+
     ts.compact()
     return ts
 
 
 def encode_and_run(g: Game, robust=True, counter_examples=None):
     model, store = game_to_milp(g, robust, counter_examples)
-    status = lp.LpStatus[model.solve(lp.solvers.COIN())]
+    status = model.optimize()
 
-    if status in ('Infeasible', 'Unbounded'):
+    if status in ('infeasible', 'unbounded'):
         return Result(False, None, None)
 
-    elif status == "Optimal":
-        cost = model.objective.value()
+    elif status == "optimal":
+        cost = model.objective.value
         sol = {v: extract_ts(v, model, g, store) for v in fn.cat(g.model.vars)}
         return Result(cost > 0, cost, sol)
     else:
