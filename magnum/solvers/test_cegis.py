@@ -36,6 +36,15 @@ def test_rps():
         solve(g, max_ce=0)
 
 
+def test_rpss():
+    from magnum.examples.rock_paper_scissors_spock import rps as g
+    
+    res, counter_examples = solve(g)
+    assert res.feasible
+    assert len(counter_examples) == 3
+    assert res.cost == 0.5
+
+
 def test_encode_refuted_rec():
     refuted = {
         'u1': traces.TimeSeries([(0, 0), (1, 1)]),
