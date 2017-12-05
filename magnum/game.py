@@ -81,12 +81,13 @@ class Game(NamedTuple):
     @property
     def scaled_scope(self):
         dt = self.model.dt
-        return stl.utils.scope(self.spec_as_stl(), dt)*dt
+        return stl.utils.scope(self.spec_as_stl(), dt)
 
 
     @property
     def scaled_times(self):
         return [self.model.dt*t for t in self.times]
+
 
     def new_horizon(self, H):
         g = bind(self).specs.obj.modify(lambda x: stl.alw(x, lo=0, hi=H))

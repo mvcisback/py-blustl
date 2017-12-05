@@ -15,8 +15,8 @@ model = G.Model(
 # Setup the specification
 
 context = {
-    stl.parse("Init"): stl.parse("x = 0"),
-    stl.parse("ReachFive"): stl.parse("(F(x > 5)) & (G((x < 5) -> (F[0,3](x < 3))))", H=H),
+    stl.parse("Init"): stl.parse("x = 3"),
+    stl.parse("ReachFive"): stl.parse("(F(x > 5)) & (G((x > 5) -> (F[0,2](x < 3))))", H=H),
 }
 
 spec = G.Specs(

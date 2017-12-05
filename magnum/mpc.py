@@ -26,9 +26,9 @@ def mpc_games(g):
         yield g.new_horizon(dH)
 
 
-def mpc(orig: Game, *, endless=True):
+def mpc(orig: Game, *, endless=True, use_smt=False, shift_output_time=True):
     solution_spec = stl.TOP
-    N = len(orig.times)
+    N = orig.scope
     for i, g in enumerate(mpc_games(orig)):
         g = bind(g).specs.learned.set(solution_spec)
 
@@ -37,22 +37,26 @@ def mpc(orig: Game, *, endless=True):
             g = bind(g).specs.init.set(stl.TOP)
 
         # TODO: check if we can reuse/extend counter_examples
-        res, _ = solve(g)
+        res, _ = solve(g, use_smt=use_smt)
 
         if not res.feasible:
             return
 
-        if i+1 < N:
-            times = range(i+1)
-            offset=False
-        else:
-            times = range(N)
-            offset=True
+        offset = i > N
+        j = min(i, N-1)
+        times = range(j+1)
+
+
 
         inputs = g.model.vars.state
         dt = g.model.dt
         solution_spec = solution_to_stl(inputs, res.solution, dt, times[:N], 
                                         offset=offset)
-        print(g.specs)
 
-        yield res.solution
+        solution = res.solution
+        if shift_output_time and offset:
+            solution = fn.walk_values(
+                lambda trace: traces.TimeSeries([(t+(i-N)*dt, v) for t, v in trace.items()]), 
+                solution)
+
+        yield solution

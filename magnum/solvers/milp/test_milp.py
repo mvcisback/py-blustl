@@ -111,7 +111,6 @@ def test_rps_counter_examples():
     assert res.feasible
 
 
-
 def test_counter_examples():
     from magnum.examples.feasible_example2 import feasible_example as g
     
@@ -130,3 +129,14 @@ def test_counter_examples():
            {'w': traces.TimeSeries([(0, 0)])}]
     res = milp.encode_and_run(g, counter_examples=ces)
     assert not res.feasible
+
+
+def test_example3():
+    from magnum.examples.feasible_example3 import feasible_example as g
+    from stl.fastboolean_eval import pointwise_sat
+    
+    res = milp.encode_and_run(g)
+    phi = g.spec_as_stl(discretize=False)
+    dt = g.model.dt
+    assert res.feasible
+    assert pointwise_sat(phi)(res.solution, 0)

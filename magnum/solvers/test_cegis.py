@@ -86,8 +86,8 @@ def test_rps():
     assert not res.feasible
     assert len(counter_examples) == 3
 
-    # res, counter_examples = solve(g, max_ce=1, max_rounds=6)
-    # assert not res.feasible
+    res, counter_examples = solve(g, max_ce=1, max_rounds=10)
+    assert not res.feasible
 
 
 def test_rpss():
@@ -99,8 +99,8 @@ def test_rpss():
     assert approx(res.cost) == 0.5
 
 
-    # res, counter_examples = solve(g, max_ce=1, max_rounds=4)
-    # assert res.feasible
+    res, counter_examples = solve(g, max_ce=1, max_rounds=4)
+    assert res.feasible
 
 
 def test_encode_refuted_rec():
@@ -109,7 +109,7 @@ def test_encode_refuted_rec():
         'u2': traces.TimeSeries([(0, 0.5)])
     }
     phi = encode_refuted_rec(refuted, 0.2, [0])
-    psi1 = stl.parse('u1 > 0.2')
+    psi1 = stl.parse('(u1 < -0.2) | (u1 > 0.2)')
     psi2 = stl.parse('(u2 < 0.3) | (u2 > 0.7)')
     assert phi == psi1 | psi2
 

@@ -29,7 +29,7 @@ def z(x: "SL", g, i):
     # TODO: come up with better function name    
     if isinstance(x[0], str) and isinstance(x[1], int):
         if x[0] in set(g.model.vars.input) | set(g.model.vars.env):
-            lo, hi = 0, 1
+            lo, hi = -1, 1
         else:
             lo = hi = None
 

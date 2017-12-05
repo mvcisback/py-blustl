@@ -21,7 +21,7 @@ def encode_refuted_rec(refuted_input, radius, times, dt=1):
         val = refuted_input[u][dt*t]
         lo, hi = val - radius, val + radius
         phi = stl.BOT
-        if lo > 0:
+        if lo > -1:
             phi |= stl.utils.next(stl.parse(f'{u} < {lo:f}'), i=t) 
 
         if hi < 1:

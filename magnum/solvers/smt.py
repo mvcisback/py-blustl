@@ -222,7 +222,7 @@ def extract_ts(name, model, g, store):
 def create_input_bounds(g):
     def _lineq(name_t):
         name, t = name_t
-        return stl.utils.next(stl.parse("(u >= 0) & (u <= 1)"), i=t)
+        return stl.utils.next(stl.parse("(u >= -1) & (u <= 1)"), i=t)
 
     inputs = chain(g.model.vars.input, g.model.vars.env)
     return stl.andf(*(map(_lineq, product(inputs, g.times))))
