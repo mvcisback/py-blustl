@@ -10,6 +10,7 @@ TODO: refactor discretization
 """
 from math import ceil
 from typing import NamedTuple, Tuple, TypeVar, Mapping
+from functools import lru_cache
 
 import stl
 from lenses import bind
@@ -38,7 +39,6 @@ class Vars(NamedTuple):
 
 class Model(NamedTuple):
     dt: float
-    H: float
     vars: Vars
     dyn: Dynamics
 
@@ -70,13 +70,24 @@ class Game(NamedTuple):
 
     @property
     def times(self):
-        return range(ceil(self.model.H/self.model.dt) + 1)
+        dt = self.model.dt
+        return range(1 + self.scope)
+
+    @property
+    def scope(self):
+        dt = self.model.dt
+        return stl.utils.scope(self.spec_as_stl(), 1)
+
+    @property
+    def scaled_scope(self):
+        dt = self.model.dt
+        return stl.utils.scope(self.spec_as_stl(), dt)*dt
+
 
     @property
     def scaled_times(self):
         return [self.model.dt*t for t in self.times]
 
     def new_horizon(self, H):
-        g = bind(self).model.H.modify(lambda x: x+H)
-        g = bind(g).specs.obj.modify(lambda x: stl.alw(x, lo=0, hi=H))
+        g = bind(self).specs.obj.modify(lambda x: stl.alw(x, lo=0, hi=H))
         return g

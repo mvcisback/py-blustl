@@ -5,9 +5,11 @@ from magnum import game as G
 
 import numpy as np
 
+H=1
+
 model = G.Model(
     dt=1,
-    H=1,
+
     vars=G.Vars(
         state=("x", "y"),
         input=("u", ),
@@ -18,7 +20,7 @@ model = G.Model(
         C=np.array([0, 60]).reshape((2, 1)),
     ))
 
-parse = lambda x: stl.parse(x, H=model.H)
+parse = lambda x: stl.parse(x, H=H)
 
 context = {
     # Init
@@ -55,7 +57,7 @@ context = {
 }
 
 spec = G.Specs(
-    obj=stl.parse('G(Rules)', H=model.H).inline_context(context),
+    obj=stl.parse('G(Rules)', H=H).inline_context(context),
     learned=stl.TOP,
     init=stl.parse("Init").inline_context(context),
 )

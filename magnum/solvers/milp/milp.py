@@ -111,7 +111,7 @@ def extract_ts(name, model, g, store):
                             for t in g.times 
                             if not isinstance(store[name, t][0], (float, int)) 
                             and store[name, t][0].name in model)
-                           , domain=(0, g.model.H+dt))
+                           , domain=(0, g.scaled_scope + dt))
 
     ts.compact()
     return ts

@@ -30,7 +30,7 @@ def mpc(orig: Game, *, endless=True):
     solution_spec = stl.TOP
     N = len(orig.times)
     for i, g in enumerate(mpc_games(orig)):
-        g = bind(g).specs.learned.modify(lambda x: x & solution_spec)
+        g = bind(g).specs.learned.set(solution_spec)
 
         # Forget about initial condition
         if i > 0:
@@ -51,6 +51,8 @@ def mpc(orig: Game, *, endless=True):
 
         inputs = g.model.vars.state
         dt = g.model.dt
-        solution_spec = solution_to_stl(inputs, res.solution, dt, times, offset=offset)
+        solution_spec = solution_to_stl(inputs, res.solution, dt, times[:N], 
+                                        offset=offset)
+        print(g.specs)
 
         yield res.solution
