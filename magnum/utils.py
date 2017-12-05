@@ -22,10 +22,10 @@ def encode_refuted_rec(refuted_input, radius, times, dt=1):
         lo, hi = val - radius, val + radius
         phi = stl.BOT
         if lo > 0:
-            phi |= stl.utils.next(stl.parse(f'{u} < {lo}'), i=t) 
+            phi |= stl.utils.next(stl.parse(f'{u} < {lo:f}'), i=t) 
 
         if hi < 1:
-            phi |= stl.utils.next(stl.parse(f'{u} > {hi}'), i=t)
+            phi |= stl.utils.next(stl.parse(f'{u} > {hi:f}'), i=t)
 
         if phi == stl.BOT:
             return stl.TOP

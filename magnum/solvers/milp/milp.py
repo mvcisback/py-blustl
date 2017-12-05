@@ -57,6 +57,7 @@ def encode_game(g, store, ce=None):
     # TODO
     dynamics = rob_encode.encode_dynamics(g, store)
     other = cat(bool_encode.encode(psi, store, 0) for psi in non_obj)
+    
     return fn.chain(robustness, dynamics, other), obj
 
 

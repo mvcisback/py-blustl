@@ -30,7 +30,7 @@ def round_counter(max_rounds):
 
 
 def solve(g, max_rounds=4, use_smt=False, max_ce=float('inf'), 
-          refuted_recs=True):
+          refuted_recs=True, bloat=0):
     """CEGIS for dominant/robust strategy.
     ∃u∀w . (x(u, w, t), u, w) ⊢ φ
     """
@@ -53,7 +53,33 @@ def solve(g, max_rounds=4, use_smt=False, max_ce=float('inf'),
         if len(counter_examples) < max_ce:
             counter_examples.append(move)
         elif refuted_recs:
-            phi = encode_refuted_rec(solution, 0.0001, g.times, dt=g.model.dt)
+            r = find_refuted_radius(g, solution, move) + bloat
+            times = list(g.times)[:-1]
+            phi = encode_refuted_rec(solution, r, times, dt=g.model.dt)
             g = bind(g).specs.learned.modify(lambda x: x & phi)
 
     raise MaxRoundsError
+
+
+@fn.autocurry
+def smt_radius_oracle(counter, play, g, r):
+    rec = ~encode_refuted_rec(play, r, g.times, dt=g.model.dt)
+    if rec == stl.BOT:
+        rec = stl.TOP
+
+    g = bind(g).specs.learned.set(rec)
+    return smt.encode_and_run(g, counter_examples=[counter]).feasible
+
+
+def find_refuted_radius(g, u_star, w_star, tol=1e-2):
+    oracle = smt_radius_oracle(counter=w_star, play=u_star, g=g)
+    r_low, r_high, r_mid = 0, 1, 1
+
+    while r_high - r_low > tol:
+        if not oracle(r=r_mid):
+            r_low = r_mid
+        else:
+            r_high = r_mid
+        r_mid = (r_low + r_high) / 2.
+
+    return r_high

@@ -56,9 +56,9 @@ def _(psi, s, t, within_or=False):
     else:
         z_phi = z((psi, t))
         s[psi, t, 'or'] = z_phi
+        x = x - psi.const if psi.op in (">", ">=") else psi.const - x
         yield Constraint(x - M*z_phi + eps, ub=0), psi
         yield Constraint(-x - M*(1 - z_phi) + eps, ub=0), psi
-        
 
 @encode.register(stl.Next)
 def _(phi, s, t, within_or=False):        
@@ -87,8 +87,4 @@ def _(phi, s, t, within_or=False):
         yield from encode(psi, s, t, within_or=True)
 
     elems = [s[psi, t, 'or'] for psi in phi.args]
-
-    yield from ((Constraint(1 - e, lb=0), K.OR) for e in elems)
-    yield Constraint(sum(elems) -  1, lb=0), K.OR_TOTAL
-
-
+    yield Constraint(sum(elems), lb=0.5), K.OR_TOTAL
