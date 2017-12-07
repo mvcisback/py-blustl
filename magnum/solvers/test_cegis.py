@@ -17,9 +17,6 @@ def test_feasible_example2_cegis():
     assert not res.feasible
     assert len(res.counter_examples) in (1,2)
     
-    with raises(MaxRoundsError):
-        solve(g, max_ce=0)
-
 
 def test_smt_radius_oracle():
     from magnum.examples.rock_paper_scissors import rps as g
@@ -79,7 +76,7 @@ def test_rps():
     assert len(res.counter_examples) == 3
 
     with raises(MaxRoundsError):
-        solve(g, use_smt=True, max_ce=0)
+        solve(g, use_smt=True, max_ce=1, refuted_recs=False)
 
     # TODO
     res = solve(g)
@@ -98,8 +95,7 @@ def test_rpss():
     assert len(res.counter_examples) == 3
     assert approx(res.cost) == 0.5
 
-
-    res, counter_examples = solve(g, max_ce=1, max_rounds=4)
+    res = solve(g, max_ce=1, max_rounds=4)
     assert res.feasible
 
 

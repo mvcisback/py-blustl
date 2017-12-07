@@ -1,3 +1,4 @@
+from collections import deque
 from itertools import product
 
 import stl
@@ -34,37 +35,52 @@ def solve(g, max_rounds=4, use_smt=False, max_ce=float('inf'),
     """CEGIS for dominant/robust strategy.
     ∃u∀w . (x(u, w, t), u, w) ⊢ φ
     """
+    solve = smt.encode_and_run if use_smt else combined_solver
+
     # Create player for sys and env resp.
     g_inv = g.invert()
 
-    solve = smt.encode_and_run if use_smt else combined_solver
+    # Initialize to worst possible robustness
+    counter = solve(g_inv)
 
-    move, counter_examples = {}, []
+    # Check if ∀w∃u...
+    if not counter.feasible:
+        return solve(g, counter_examples=[counter.input(g_inv)])
+
+    # Cegis Loop
+    if max_ce == float('inf'):
+        moves = deque([counter.env_input(g_inv)], maxlen=1)
+    else:
+        moves = deque([counter.env_input(g_inv)])
+
+    counter_moves = deque([counter.input(g_inv)])
+
     for _ in round_counter(max_rounds):
-        counter = solve(g_inv, counter_examples=[move])
+        candidate = solve(g, counter_examples=counter_moves)
+        if not candidate.feasible:
+            return candidate
+
+        moves.appendleft(candidate.input(g))
+        counter = solve(g_inv, counter_examples=[moves[0]])
+
         if not counter.feasible:
             # Check if we've synthesized an optimal input
-            if not move:
+            if not moves:
                 candidate = solve(g)
             return candidate
 
         counter_move = counter.input(g_inv)
+        counter_moves.appendleft(counter_move)
 
-        if len(counter_examples) < max_ce:
-            counter_examples.append(counter_move)
-
-        elif refuted_recs:
-            r = find_refuted_radius(g, move, counter_move)
-            r += bloat
-            times = list(g.times)[:-1]
-            phi = encode_refuted_rec(move, r, times, dt=g.model.dt)
-            g = g.learn(phi)
-
-        candidate = solve(g, counter_examples=counter_examples)
-        move = candidate.input(g)
-        if not candidate.feasible:
-            return candidate
-
+        if len(counter_moves) > max_ce:
+            stale_counter = counter_moves.pop()
+            stale_move = moves.pop()
+            if refuted_recs:
+                r = find_refuted_radius(g, stale_move, stale_counter)
+                r += bloat
+                times = list(g.times)[:-1]
+                phi = encode_refuted_rec(stale_move, r, times, dt=g.model.dt)
+                g = g.learn(phi)
 
     raise MaxRoundsError
 
@@ -75,7 +91,7 @@ def smt_radius_oracle(counter, play, g, r):
     if rec == stl.BOT:
         rec = stl.TOP
 
-    g = bind(g).specs.learned.set(rec)
+    g = g.learn(rec)
     return smt.encode_and_run(g, counter_examples=[counter]).feasible
 
 
