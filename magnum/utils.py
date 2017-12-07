@@ -1,9 +1,29 @@
-from collections import namedtuple
+from typing import NamedTuple, TypeVar, Mapping, List
 from itertools import product
+
+import funcy as fn
 
 import stl
 
-Result = namedtuple("Result", ["feasible", "cost", "solution"])
+Trace = TypeVar('Trace')
+
+class Result(NamedTuple):
+    feasible: bool
+    cost: float
+    solution: Mapping[str, Trace]
+    counter_examples: List[Trace]
+
+    def input(self, g):
+        return fn.project(self.solution, g.model.vars.input)
+
+
+    def output(self, g):
+        return fn.project(self.solution, g.model.vars.state)
+
+
+    def env_input(self, g):
+        return fn.project(self.solution, g.model.vars.env)
+
 
 def solution_to_stl(inputs, sol, dt, times, offset=False):
     def _lineq(var_t):

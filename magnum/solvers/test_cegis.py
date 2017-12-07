@@ -10,12 +10,12 @@ from magnum.solvers.cegis import (solve, MaxRoundsError, encode_refuted_rec,
                                   combined_solver, find_refuted_radius, 
                                   smt_radius_oracle)
 
-def test_counter_examples():
+def test_feasible_example2_cegis():
     from magnum.examples.feasible_example2 import feasible_example as g
     
-    res, counter_examples = solve(g)
+    res = solve(g)
     assert not res.feasible
-    assert len(counter_examples) == 1
+    assert len(res.counter_examples) in (1,2)
     
     with raises(MaxRoundsError):
         solve(g, max_ce=0)
@@ -74,28 +74,28 @@ def test_find_refuted_radius():
 def test_rps():
     from magnum.examples.rock_paper_scissors import rps as g
     
-    res, counter_examples = solve(g, use_smt=True)
+    res = solve(g, use_smt=True)
     assert not res.feasible
-    assert len(counter_examples) == 3
+    assert len(res.counter_examples) == 3
 
     with raises(MaxRoundsError):
         solve(g, use_smt=True, max_ce=0)
 
     # TODO
-    res, counter_examples = solve(g)
+    res = solve(g)
     assert not res.feasible
-    assert len(counter_examples) == 3
+    assert len(res.counter_examples) == 3
 
-    res, counter_examples = solve(g, max_ce=1, max_rounds=10)
+    res = solve(g, max_ce=1, max_rounds=10)
     assert not res.feasible
 
 
 def test_rpss():
     from magnum.examples.rock_paper_scissors_spock import rps as g
     
-    res, counter_examples = solve(g)
+    res = solve(g)
     assert res.feasible
-    assert len(counter_examples) == 3
+    assert len(res.counter_examples) == 3
     assert approx(res.cost) == 0.5
 
 

@@ -1,21 +1,20 @@
 import stl
 
-from sympy import Symbol
-
 import magnum
 from magnum import game as G
-from magnum import io
 from magnum.solvers.cegis import cegis_loop
 
 import numpy as np
 
+H=4
+
+
 model = G.Model(
-    dt=0.1,
-    H=4,
+    dt=1,
     vars=G.Vars(
-        state=(Symbol("x"), Symbol("vx"), Symbol("y"), Symbol("vy")),
-        input=(Symbol("u"), ),
-        env=(Symbol("w"), )),
+        state=("x", "vx", "y", "vy"),
+        input=("u", ),
+        env=("w", )),
     t=0,
     dyn=G.Dynamics(
         A=np.array([

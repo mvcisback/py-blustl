@@ -252,7 +252,7 @@ def encode_and_run(g, counter_examples=None):
 
 
     if model is None:
-        return Result(False, None, None)
+        return Result(False, None, None, counter_examples)
 
     sol = {v: extract_ts(v, model, g, store) for v in fn.cat(g.model.vars)}
-    return Result(True, 0, sol)
+    return Result(True, 0, sol, counter_examples)

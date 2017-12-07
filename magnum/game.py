@@ -92,3 +92,7 @@ class Game(NamedTuple):
     def new_horizon(self, H):
         g = bind(self).specs.obj.modify(lambda x: stl.alw(x, lo=0, hi=H))
         return g
+
+    
+    def learn(self, phi):
+        return bind(self).specs.learned.modify(lambda x: x & phi)

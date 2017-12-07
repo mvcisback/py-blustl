@@ -7,7 +7,7 @@ from lenses import bind
 import magnum
 from magnum.solvers import smt
 from magnum.solvers import milp
-from magnum.utils import encode_refuted_rec
+from magnum.utils import encode_refuted_rec, Result
 
 
 class MaxRoundsError(Exception):
@@ -37,26 +37,34 @@ def solve(g, max_rounds=4, use_smt=False, max_ce=float('inf'),
     # Create player for sys and env resp.
     g_inv = g.invert()
 
-    counter_examples = []
     solve = smt.encode_and_run if use_smt else combined_solver
-    for _ in round_counter(max_rounds):
-        play = solve(g, counter_examples=counter_examples)
-        if not play.feasible:
-            return play, counter_examples
-        
-        solution = fn.project(play.solution, g.model.vars.input)
-        counter = solve(g_inv, counter_examples=[solution])
-        if not counter.feasible:
-            return play, counter_examples
 
-        move = fn.project(counter.solution, g.model.vars.env)
+    move, counter_examples = {}, []
+    for _ in round_counter(max_rounds):
+        counter = solve(g_inv, counter_examples=[move])
+        if not counter.feasible:
+            # Check if we've synthesized an optimal input
+            if not move:
+                candidate = solve(g)
+            return candidate
+
+        counter_move = counter.input(g_inv)
+
         if len(counter_examples) < max_ce:
-            counter_examples.append(move)
+            counter_examples.append(counter_move)
+
         elif refuted_recs:
-            r = find_refuted_radius(g, solution, move) + bloat
+            r = find_refuted_radius(g, move, counter_move)
+            r += bloat
             times = list(g.times)[:-1]
-            phi = encode_refuted_rec(solution, r, times, dt=g.model.dt)
-            g = bind(g).specs.learned.modify(lambda x: x & phi)
+            phi = encode_refuted_rec(move, r, times, dt=g.model.dt)
+            g = g.learn(phi)
+
+        candidate = solve(g, counter_examples=counter_examples)
+        move = candidate.input(g)
+        if not candidate.feasible:
+            return candidate
+
 
     raise MaxRoundsError
 

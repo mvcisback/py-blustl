@@ -88,8 +88,12 @@ def game_to_milp(g: Game, robust=True, counter_examples=None):
     constraints, objs = zip(*(encode_game(g2, store) for g2 in scenarios))
 
     # Objective is to maximize the minimum robustness of the scenarios.
-    obj = stl.andf(*objs)
-    constraints = chain(rob_encode.encode(obj, store, 0), fn.cat(constraints))
+    if len(objs) > 1:
+        obj = stl.andf(*objs)
+        constraints = chain(rob_encode.encode(obj, store, 0), fn.cat(constraints))
+    else:
+        obj = objs[0]
+        constraints = fn.cat(constraints)
 
     for i, (constr, kind) in enumerate(constraints):
         if constr is True:
@@ -122,12 +126,12 @@ def encode_and_run(g: Game, robust=True, counter_examples=None):
     status = model.optimize()
 
     if status in ('infeasible', 'unbounded'):
-        return Result(False, None, None)
+        return Result(False, None, None, counter_examples)
 
     elif status == "optimal":
         cost = model.objective.value
         sol = {v: extract_ts(v, model, g, store) for v in fn.cat(g.model.vars)}
-        return Result(cost > 0, cost, sol)
+        return Result(cost > 0, cost, sol, counter_examples)
     else:
         raise NotImplementedError((model, status))
 
