@@ -4,16 +4,16 @@ from magnum import game as G
 
 import numpy as np
 
-## Setup the Model
-H=8
+# Setup the Model
+H = 8
 
 model = G.Model(
     dt=0.1,
-
     vars=G.Vars(state=("x1", "x2"), input=("u", ), env=("w1", "w2")),
-    dyn=G.Dynamics(A=np.array([[0, 1],[-1, -2]]), 
-                   B=np.array([[20],[0]]), 
-                   C=np.array([[1, 0],[0, 1]])))
+    dyn=G.Dynamics(
+        A=np.array([[0, 1], [-1, -2]]),
+        B=np.array([[20], [0]]),
+        C=np.array([[1, 0], [0, 1]])))
 
 # Setup the specification
 

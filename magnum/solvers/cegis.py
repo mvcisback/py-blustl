@@ -1,14 +1,11 @@
 from collections import deque
-from itertools import product
 
 import stl
 import funcy as fn
-from lenses import bind
 
-import magnum
 from magnum.solvers import smt
 from magnum.solvers import milp
-from magnum.utils import encode_refuted_rec, Result
+from magnum.utils import encode_refuted_rec
 
 
 class MaxRoundsError(Exception):
@@ -30,8 +27,12 @@ def round_counter(max_rounds):
         i += 1
 
 
-def solve(g, max_rounds=4, use_smt=False, max_ce=float('inf'), 
-          refuted_recs=True, bloat=0):
+def solve(g,
+          max_rounds=4,
+          use_smt=False,
+          max_ce=float('inf'),
+          refuted_recs=True,
+          bloat=0):
     """CEGIS for dominant/robust strategy.
     ∃u∀w . (x(u, w, t), u, w) ⊢ φ
     """

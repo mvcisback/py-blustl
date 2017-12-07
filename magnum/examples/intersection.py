@@ -2,19 +2,14 @@ import stl
 
 import magnum
 from magnum import game as G
-from magnum.solvers.cegis import cegis_loop
 
 import numpy as np
 
-H=4
-
+H = 4
 
 model = G.Model(
     dt=1,
-    vars=G.Vars(
-        state=("x", "vx", "y", "vy"),
-        input=("u", ),
-        env=("w", )),
+    vars=G.Vars(state=("x", "vx", "y", "vy"), input=("u", ), env=("w", )),
     t=0,
     dyn=G.Dynamics(
         A=np.array([
@@ -27,7 +22,10 @@ model = G.Model(
         C=np.array([0, 0, 0, 10]).reshape((4, 1)),
     ))
 
-parse = lambda x: stl.parse(x, H=model.H)
+
+def parse(x):
+    return stl.parse(x, H=model.H)
+
 
 context = {
     # Init

@@ -1,19 +1,17 @@
-import operator as op
 from functools import singledispatch, wraps
 
 import stl
 from optlang import Constraint, Variable
-
-from magnum.game import Game
-from magnum.constraint_kinds import Kind as K, Kind
-from magnum.constraint_kinds import Category as C
+from magnum.constraint_kinds import Kind as K
 
 
-eps=1e-7
+eps = 1e-7
 M = 1000  # TODO
+
 
 def counter(func):
     i = 0
+
     @wraps(func)
     def _func(*args, **kwargs):
         nonlocal i
@@ -21,6 +19,7 @@ def counter(func):
         return func(*args, i=i, **kwargs)
 
     return _func
+
 
 @counter
 def z(x: "SL", i: int):
@@ -40,9 +39,8 @@ def encode(psi, s, t, within_or=False):
 
 
 @encode.register(stl.LinEq)
-def _(psi, s, t, within_or=False):
-    x = sum(float(term.coeff) * s[(term.id, t)][0] for term in
-            psi.terms)
+def encode_lineq(psi, s, t, within_or=False):
+    x = sum(float(term.coeff) * s[(term.id, t)][0] for term in psi.terms)
 
     if not within_or:
         if psi.op == "=":
@@ -57,18 +55,19 @@ def _(psi, s, t, within_or=False):
         z_phi = z((psi, t))
         s[psi, t, 'or'] = z_phi
         x = x - psi.const if psi.op in (">", ">=") else psi.const - x
-        yield Constraint(x - M*z_phi + eps, ub=0), psi
-        yield Constraint(-x - M*(1 - z_phi) + eps, ub=0), psi
+        yield Constraint(x - M * z_phi + eps, ub=0), psi
+        yield Constraint(-x - M * (1 - z_phi) + eps, ub=0), psi
+
 
 @encode.register(stl.Next)
-def _(phi, s, t, within_or=False):        
-    yield from encode(phi.arg, s, t+1, within_or)
+def encode_next(phi, s, t, within_or=False):
+    yield from encode(phi.arg, s, t + 1, within_or)
     if within_or:
-        s[phi, t, 'or'] = s[phi.arg, t+1, 'or']
+        s[phi, t, 'or'] = s[phi.arg, t + 1, 'or']
 
 
 @encode.register(stl.And)
-def _(phi, s, t, within_or=False):
+def encode_and(phi, s, t, within_or=False):
     if within_or:
         raise NotImplementedError
 
@@ -77,7 +76,7 @@ def _(phi, s, t, within_or=False):
 
 
 @encode.register(stl.Or)
-def _(phi, s, t, within_or=False):
+def encode_or(phi, s, t, within_or=False):
     if within_or:
         raise NotImplementedError
 

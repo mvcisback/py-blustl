@@ -4,19 +4,20 @@ from magnum import game as G
 
 import numpy as np
 
-## Setup the Model
-H=3
+# Setup the Model
+H = 3
 model = G.Model(
     dt=1,
-
     vars=G.Vars(state=("x", ), input=("u", ), env=()),
     dyn=G.Dynamics(A=np.array([[0]]), B=np.array([[10]]), C=np.array([[]])))
 
 # Setup the specification
 
 context = {
-    stl.parse("Init"): stl.parse("x = 3"),
-    stl.parse("ReachFive"): stl.parse("(F(x > 5)) & (G((x > 5) -> (F[0,2](x < 3))))", H=H),
+    stl.parse("Init"):
+    stl.parse("x = 3"),
+    stl.parse("ReachFive"):
+    stl.parse("(F(x > 5)) & (G((x > 5) -> (F[0,2](x < 3))))", H=H),
 }
 
 spec = G.Specs(

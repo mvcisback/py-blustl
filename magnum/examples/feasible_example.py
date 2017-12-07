@@ -4,12 +4,11 @@ from magnum import game as G
 
 import numpy as np
 
-## Setup the Model
-H=1
+# Setup the Model
+H = 1
 
 model = G.Model(
     dt=1,
-
     vars=G.Vars(state=("x", ), input=("u", ), env=()),
     dyn=G.Dynamics(A=np.array([[0]]), B=np.array([[10]]), C=np.array([[]])))
 

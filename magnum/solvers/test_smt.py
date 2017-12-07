@@ -1,10 +1,9 @@
-import funcy as fn
 import stl
-
 import traces
 from lenses import bind
 
 from magnum.solvers.smt import encode, decode, encode_and_run
+
 
 def test_invertability():
     phi = stl.parse('(G[0, 1](x > 4)) | (~(F[0, 1](y < 5)))')
@@ -60,12 +59,12 @@ def test_one_player_rps():
 
 def test_rps_counter_examples():
     from magnum.examples.rock_paper_scissors import rps as g
-    ces = [{'w': traces.TimeSeries([(0, 20/60)])}]
+    ces = [{'w': traces.TimeSeries([(0, 20 / 60)])}]
 
     res = encode_and_run(g, counter_examples=ces)
     assert res.feasible
 
-    ces.append({'w': traces.TimeSeries([(0, 40/60)])})
+    ces.append({'w': traces.TimeSeries([(0, 40 / 60)])})
 
     res = encode_and_run(g, counter_examples=ces)
     assert res.feasible
@@ -75,18 +74,17 @@ def test_rps_counter_examples():
     res = encode_and_run(g, counter_examples=ces)
     assert not res.feasible
 
-
     g = g.invert()
 
     res = encode_and_run(g)
     assert res.feasible
-    
-    ces = [{'u': traces.TimeSeries([(0, 20/60)])}]
+
+    ces = [{'u': traces.TimeSeries([(0, 20 / 60)])}]
 
     res = encode_and_run(g, counter_examples=ces)
     assert res.feasible
 
-    ces = [{'u': traces.TimeSeries([(0, 40/60)])}]
+    ces = [{'u': traces.TimeSeries([(0, 40 / 60)])}]
 
     res = encode_and_run(g, counter_examples=ces)
     assert res.feasible

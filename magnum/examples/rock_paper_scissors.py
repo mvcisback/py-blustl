@@ -1,30 +1,29 @@
 import stl
 
-import magnum
 from magnum import game as G
 
 import numpy as np
 
-H=1
+H = 1
 
 model = G.Model(
     dt=1,
-
-    vars=G.Vars(
-        state=("x", "y"),
-        input=("u", ),
-        env=("w", )),
+    vars=G.Vars(state=("x", "y"), input=("u", ), env=("w", )),
     dyn=G.Dynamics(
         A=np.array([[0, 0], [0, 0]]),
         B=np.array([60, 0]).reshape((2, 1)),
         C=np.array([0, 60]).reshape((2, 1)),
     ))
 
-parse = lambda x: stl.parse(x, H=H)
+
+def parse(x):
+    return stl.parse(x, H=H)
+
 
 context = {
     # Init
-    parse("Init"): stl.parse('(x = 0) & (y = 0)'),
+    parse("Init"):
+    stl.parse('(x = 0) & (y = 0)'),
 
     # Rock
     parse("xRock"):
@@ -51,7 +50,6 @@ context = {
     parse("(yScissors) -> (~(xPaper))"),
     parse("RockBeatsScissors"):
     parse("(yRock) -> (~(xScissors))"),
-
     parse("Rules"):
     parse("(PaperBeatsRock) & (ScissorsBeatsPaper) & (RockBeatsScissors)"),
 }

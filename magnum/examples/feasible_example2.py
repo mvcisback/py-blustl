@@ -4,9 +4,9 @@ from magnum import game as G
 
 import numpy as np
 
-## Setup the Model
+# Setup the Model
 
-H=1
+H = 1
 
 model = G.Model(
     dt=0.5,

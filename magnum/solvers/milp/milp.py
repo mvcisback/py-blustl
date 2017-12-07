@@ -5,17 +5,15 @@
 
 from collections import defaultdict
 from itertools import chain, product
-import operator as op
-from functools import partial
 
 import funcy as fn
 import stl
 import traces
 from lenses import bind
-from funcy import cat, compose
-from optlang import Model, Variable, Constraint, Objective
+from funcy import cat
+from optlang import Model, Objective
 
-from magnum.game import Game, Specs, Vars
+from magnum.game import Game
 from magnum.constraint_kinds import Kind as K
 from magnum.utils import Result
 from magnum.solvers.milp import robustness_encoding as rob_encode
@@ -25,7 +23,7 @@ from magnum.solvers.milp import boolean_encoding as bool_encode
 class keydefaultdict(defaultdict):
     def __missing__(self, key):
         if self.default_factory is None:
-            raise KeyError( key )
+            raise KeyError(key)
         else:
             ret = self[key] = self.default_factory(key)
             return ret
@@ -40,7 +38,7 @@ def counter_example_store(g, ce, i):
         return x if i == 0 else f"{x}#{i}"
 
     dt = g.model.dt
-    return {(relabel(name), t): (trace[dt*t],)
+    return {(relabel(name), t): (trace[dt * t], )
             for (name, trace), t in product(ce.items(), g.times)}
 
 
@@ -49,15 +47,17 @@ def encode_game(g, store, ce=None):
     obj, *non_obj = g.specs
 
     obj = stl.utils.discretize(obj, dt=g.model.dt, distribute=True)
-    non_obj = {stl.utils.discretize(phi, dt=g.model.dt, distribute=True)
-               for phi in non_obj if phi != stl.TOP}
+    non_obj = {
+        stl.utils.discretize(phi, dt=g.model.dt, distribute=True)
+        for phi in non_obj if phi != stl.TOP
+    }
 
     # Constraints
     robustness = rob_encode.encode(obj, store, 0)
     # TODO
     dynamics = rob_encode.encode_dynamics(g, store)
     other = cat(bool_encode.encode(psi, store, 0) for psi in non_obj)
-    
+
     return fn.chain(robustness, dynamics, other), obj
 
 
@@ -84,13 +84,16 @@ def game_to_milp(g: Game, robust=True, counter_examples=None):
         store.update(counter_example_store(g, ce, i))
 
     # Encode each scenario.
-    scenarios = [create_scenario(g, i) for i, ce in enumerate(counter_examples)]
+    scenarios = [
+        create_scenario(g, i) for i, ce in enumerate(counter_examples)
+    ]
     constraints, objs = zip(*(encode_game(g2, store) for g2 in scenarios))
 
     # Objective is to maximize the minimum robustness of the scenarios.
     if len(objs) > 1:
         obj = stl.andf(*objs)
-        constraints = chain(rob_encode.encode(obj, store, 0), fn.cat(constraints))
+        constraints = chain(
+            rob_encode.encode(obj, store, 0), fn.cat(constraints))
     else:
         obj = objs[0]
         constraints = fn.cat(constraints)
@@ -108,14 +111,15 @@ def game_to_milp(g: Game, robust=True, counter_examples=None):
 
 # Encoding the dynamics
 
+
 def extract_ts(name, model, g, store):
     dt = g.model.dt
     model = {k: v.primal for k, v in model.variables.items()}
-    ts = traces.TimeSeries(((dt*t, model[store[name, t][0].name])
-                            for t in g.times 
-                            if not isinstance(store[name, t][0], (float, int)) 
-                            and store[name, t][0].name in model)
-                           , domain=(0, g.scaled_scope + dt))
+    ts = traces.TimeSeries(
+        ((dt * t, model[store[name, t][0].name]) for t in g.times
+         if not isinstance(store[name, t][0],
+                           (float, int)) and store[name, t][0].name in model),
+        domain=(0, g.scaled_scope + dt))
 
     ts.compact()
     return ts
@@ -134,4 +138,3 @@ def encode_and_run(g: Game, robust=True, counter_examples=None):
         return Result(cost > 0, cost, sol, counter_examples)
     else:
         raise NotImplementedError((model, status))
-

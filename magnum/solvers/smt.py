@@ -1,14 +1,12 @@
 # TODO: Create store abstraction class
 
 import operator as op
-from operator import itemgetter as ig
 from itertools import product, chain
 from functools import singledispatch
 
 import funcy as fn
 import numpy as np
 import traces
-from lenses import bind
 from bidict import bidict
 from pysmt.shortcuts import Symbol, get_model, Plus, And, Or, Equals
 from pysmt.shortcuts import FALSE, TRUE, FreshSymbol
@@ -17,7 +15,6 @@ from pysmt.typing import REAL, BOOL
 
 import stl
 
-from magnum import game
 from magnum.utils import Result
 
 
@@ -81,7 +78,7 @@ def _encode_top(*args, **kwargs):
 
 
 @_encode.register(type(stl.BOT))
-def _encode_top(*args, **kwargs):
+def _encode_bot(*args, **kwargs):
     return FALSE()
 
 
@@ -171,9 +168,11 @@ def encode_dynamics(g, store=None):
 
 
 def _encode_dynamics(A, B, C, var_lists, store, t):
-    rhses = [row_to_smt(zip([a, b, c], var_lists), store, t)
-                    for a, b, c in zip(A, B, C)]
-    lhses = [store[v, t+1] for v in var_lists[0]]
+    rhses = [
+        row_to_smt(zip([a, b, c], var_lists), store, t)
+        for a, b, c in zip(A, B, C)
+    ]
+    lhses = [store[v, t + 1] for v in var_lists[0]]
     return And(*(Equals(lhs, rhs) for lhs, rhs in zip(lhses, rhses)))
 
 
@@ -184,7 +183,7 @@ def row_to_smt(rows_and_var_lists, store, t):
         def _create_var(a, x):
             if (x, t) not in store:
                 store[(x, t)] = Symbol(f"{x}[{t}]", REAL)
-            
+
             return float(a) * store[x, t]
 
         return (_create_var(a, x) for a, x in zip(*rows_and_vars))
@@ -198,7 +197,7 @@ def decode_dynamics(eq, store=None):
 
 def counter_example_store(g, ce):
     dt = g.model.dt
-    return {(name, t): trace[dt*t]
+    return {(name, t): trace[dt * t]
             for (name, trace), t in product(ce.items(), g.times)}
 
 
@@ -211,10 +210,10 @@ def extract_ts(name, model, g, store):
     dt = g.model.dt
     # TODO: hack to have to eval this
     # TODO: support extracting H=0 timeseries
-    ts = traces.TimeSeries(((dt*t, eval(str(model[store[name, t]]))) 
-                             for t in g.times 
-                            if (name, t) in store and store[name, t] in model),
-                           domain=(0, g.scope + dt))
+    ts = traces.TimeSeries(
+        ((dt * t, eval(str(model[store[name, t]]))) for t in g.times
+         if (name, t) in store and store[name, t] in model),
+        domain=(0, g.scope + dt))
     ts.compact()
     return ts
 
@@ -249,7 +248,6 @@ def encode_and_run(g, counter_examples=None):
         f &= (f1 & f2).substitute(subs)
 
     model = get_model(f)
-
 
     if model is None:
         return Result(False, None, None, counter_examples)

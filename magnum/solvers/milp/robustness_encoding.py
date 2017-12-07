@@ -1,5 +1,3 @@
-import sympy
-import operator as op
 from functools import partial, singledispatch, wraps
 
 import stl
@@ -7,14 +5,14 @@ import funcy as fn
 import numpy as np
 from optlang import Variable, Constraint
 
-from magnum.game import Game
 from magnum.constraint_kinds import Kind as K, Kind
-from magnum.constraint_kinds import Category as C
 
 M = 1000  # TODO
 
+
 def counter(func):
     i = 0
+
     @wraps(func)
     def _func(*args, **kwargs):
         nonlocal i
@@ -26,7 +24,7 @@ def counter(func):
 
 @counter
 def z(x: "SL", g, i):
-    # TODO: come up with better function name    
+    # TODO: come up with better function name
     if isinstance(x[0], str) and isinstance(x[1], int):
         if x[0] in set(g.model.vars.input) | set(g.model.vars.env):
             lo, hi = -1, 1
@@ -34,7 +32,7 @@ def z(x: "SL", g, i):
             lo = hi = None
 
         kwargs = {'name': f"{x[0]}_{x[1]}", 'lb': lo, 'ub': hi}
-        return (Variable(**kwargs),)
+        return (Variable(**kwargs), )
 
     r_var = Variable(name=f"r{i}")
 
@@ -54,26 +52,25 @@ def encode(psi, s, t):
 
 
 @encode.register(stl.Neg)
-def _(phi, s, t):
+def encode_neg(phi, s, t):
     yield Constraint(s[phi][0] + s[phi.arg][0], lb=0, ub=0), K.NEG
     yield from encode(phi.arg, s, t)
 
 
 @encode.register(stl.Next)
-def _(phi, s, t):
-    yield from encode(phi.arg, s, t+1)
+def encode_next(phi, s, t):
+    yield from encode(phi.arg, s, t + 1)
 
 
 @encode.register(stl.ast._Top)
 @encode.register(stl.ast._Bot)
-def _(phi, s, t):
+def encode_top_bot(phi, s, t):
     yield from []
 
 
 @encode.register(stl.LinEq)
-def _(psi, s, t):
-    x = sum(
-        float(term.coeff) * s[(term.id, t)][0] for term in psi.terms)
+def encode_lineq(psi, s, t):
+    x = sum(float(term.coeff) * s[(term.id, t)][0] for term in psi.terms)
     y = s[stl.utils.next(psi, t)][0]
     if psi.op in (">", ">="):
         expr = x - y
@@ -97,7 +94,6 @@ def encode_op(phi: "SL", s, t, *, k: Kind, isor: bool):
 
     # For each variable comput r and assert rel to psi r
     elems = [s[psi][0] for psi in phi.args]
-    rel = op.ge if isor else op.le
     for psi, e in zip(phi.args, elems):
         if isor:
             yield Constraint(e - r_var, ub=0), k[0]
@@ -122,16 +118,18 @@ def encode_dynamics(g, store):
     C = dt * C
 
     times = g.times
-    yield from fn.cat(_encode_dynamics(A, B, C, g.model.vars, store, t) 
-                      for t in times[:-1])
+    yield from fn.cat(
+        _encode_dynamics(A, B, C, g.model.vars, store, t) for t in times[:-1])
 
 
 def _encode_dynamics(A, B, C, var_lists, store, t):
-    rhses = [row_to_smt(zip([a, b, c], var_lists), store, t)
-                    for a, b, c in zip(A, B, C)]
-    lhses = [store[v, t+1][0] for v in var_lists[0]]
+    rhses = [
+        row_to_smt(zip([a, b, c], var_lists), store, t)
+        for a, b, c in zip(A, B, C)
+    ]
+    lhses = [store[v, t + 1][0] for v in var_lists[0]]
 
-    yield from ((Constraint(lhs - rhs, lb=0, ub=0), (lhs, rhs)) 
+    yield from ((Constraint(lhs - rhs, lb=0, ub=0), (lhs, rhs))
                 for lhs, rhs in zip(lhses, rhses))
 
 

@@ -8,9 +8,7 @@ TODO: Include meta information in Game
 TODO: create map from SL expr to matching Temporal Logic term after conversion
 TODO: refactor discretization
 """
-from math import ceil
-from typing import NamedTuple, Tuple, TypeVar, Mapping
-from functools import lru_cache
+from typing import NamedTuple, Tuple, TypeVar
 
 import stl
 from lenses import bind
@@ -70,29 +68,23 @@ class Game(NamedTuple):
 
     @property
     def times(self):
-        dt = self.model.dt
         return range(1 + self.scope)
 
     @property
     def scope(self):
-        dt = self.model.dt
         return stl.utils.scope(self.spec_as_stl(), 1)
 
     @property
     def scaled_scope(self):
-        dt = self.model.dt
-        return stl.utils.scope(self.spec_as_stl(), dt)
-
+        return stl.utils.scope(self.spec_as_stl(), self.model.dt)
 
     @property
     def scaled_times(self):
-        return [self.model.dt*t for t in self.times]
-
+        return [self.model.dt * t for t in self.times]
 
     def new_horizon(self, H):
         g = bind(self).specs.obj.modify(lambda x: stl.alw(x, lo=0, hi=H))
         return g
 
-    
     def learn(self, phi):
         return bind(self).specs.learned.modify(lambda x: x & phi)

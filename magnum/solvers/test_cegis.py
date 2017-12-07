@@ -2,75 +2,72 @@ import stl
 import traces
 from pytest import raises, approx
 from lenses import bind
-from magnum.solvers import smt
-import funcy as fn
-import numpy as np
 
 from magnum.solvers.cegis import (solve, MaxRoundsError, encode_refuted_rec,
-                                  combined_solver, find_refuted_radius, 
-                                  smt_radius_oracle)
+                                  find_refuted_radius, smt_radius_oracle)
+
 
 def test_feasible_example2_cegis():
     from magnum.examples.feasible_example2 import feasible_example as g
-    
+
     res = solve(g)
     assert not res.feasible
-    assert len(res.counter_examples) in (1,2)
-    
+    assert len(res.counter_examples) in (1, 2)
+
 
 def test_smt_radius_oracle():
     from magnum.examples.rock_paper_scissors import rps as g
 
     play = {'u': traces.TimeSeries([(0, 1)])}
-    counter = {'w': traces.TimeSeries([(0, 20/60)])}
+    counter = {'w': traces.TimeSeries([(0, 20 / 60)])}
     oracle = smt_radius_oracle(g=g, play=play, counter=counter)
 
-    assert not oracle(r=9/60)
-    assert oracle(r=20/60)
+    assert not oracle(r=9 / 60)
+    assert oracle(r=20 / 60)
     assert oracle(r=1)
 
     play = {'u': traces.TimeSeries([(0, 0)])}
-    counter = {'w': traces.TimeSeries([(0, 20/60)])}
-    
+    counter = {'w': traces.TimeSeries([(0, 20 / 60)])}
+
     oracle = smt_radius_oracle(g=g, play=play, counter=counter)
-    
-    assert not oracle(r=5/60)
-    assert not oracle(r=9/60)
-    assert oracle(r=11/60)
+
+    assert not oracle(r=5 / 60)
+    assert not oracle(r=9 / 60)
+    assert oracle(r=11 / 60)
     assert oracle(r=1)
 
 
 def test_find_refuted_radius():
     from magnum.examples.rock_paper_scissors import rps as g
     play = {'u': traces.TimeSeries([(0, 1)])}
-    counter = {'w': traces.TimeSeries([(0, 20/60)])}
+    counter = {'w': traces.TimeSeries([(0, 20 / 60)])}
 
     r = find_refuted_radius(g, play, counter, tol=1e-6)
-    assert approx(10/60, abs=1e-5) == r
+    assert approx(10 / 60, abs=1e-5) == r
 
     play = {'u': traces.TimeSeries([(0, 0)])}
-    counter = {'w': traces.TimeSeries([(0, 20/60)])}
-    
-    r = find_refuted_radius(g, play, counter, tol=1e-6)
-    assert approx(10/60, abs=1e-5) == r
+    counter = {'w': traces.TimeSeries([(0, 20 / 60)])}
 
-    play = {'u': traces.TimeSeries([(0, 20/60)])}
-    counter = {'w': traces.TimeSeries([(0, 40/60)])}
-    
     r = find_refuted_radius(g, play, counter, tol=1e-6)
-    assert approx(10/60, abs=1e-5) == r
+    assert approx(10 / 60, abs=1e-5) == r
 
-    play = {'u': traces.TimeSeries([(0, 40/60)])}
+    play = {'u': traces.TimeSeries([(0, 20 / 60)])}
+    counter = {'w': traces.TimeSeries([(0, 40 / 60)])}
+
+    r = find_refuted_radius(g, play, counter, tol=1e-6)
+    assert approx(10 / 60, abs=1e-5) == r
+
+    play = {'u': traces.TimeSeries([(0, 40 / 60)])}
     counter = {'w': traces.TimeSeries([(0, 0)])}
 
     r = find_refuted_radius(g, play, counter, tol=1e-6)
-    assert approx(10/60, abs=1e-5) == r
+    assert approx(10 / 60, abs=1e-5) == r
 
 
 # TODO
 def test_rps():
     from magnum.examples.rock_paper_scissors import rps as g
-    
+
     res = solve(g, use_smt=True)
     assert not res.feasible
     assert len(res.counter_examples) == 3
@@ -89,7 +86,7 @@ def test_rps():
 
 def test_rpss():
     from magnum.examples.rock_paper_scissors_spock import rps as g
-    
+
     res = solve(g)
     assert res.feasible
     assert len(res.counter_examples) == 3
@@ -125,7 +122,7 @@ def test_encode_refuted_rec_sync():
     from stl.boolean_eval import pointwise_sat
     dt = g.model.dt
 
-    refuted = { 'u': traces.TimeSeries([(0, 0.5)]) }
+    refuted = {'u': traces.TimeSeries([(0, 0.5)])}
     phi = encode_refuted_rec(refuted, 0.1, g.times, dt=dt)
 
     g = bind(g).specs.learned.set(phi)
@@ -134,7 +131,7 @@ def test_encode_refuted_rec_sync():
     res = milp.encode_and_run(g)
     assert pointwise_sat(phi, dt=dt)(res.solution)
 
-    refuted = { 'u': traces.TimeSeries([(0, 1), (0.4, 1), (1, 0)]) }
+    refuted = {'u': traces.TimeSeries([(0, 1), (0.4, 1), (1, 0)])}
     phi = encode_refuted_rec(refuted, 0.1, g.times, dt=dt)
     g = bind(g).specs.learned.set(phi)
 
@@ -143,4 +140,3 @@ def test_encode_refuted_rec_sync():
 
     res = milp.encode_and_run(g)
     assert pointwise_sat(phi, dt=dt)(res.solution)
-
