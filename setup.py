@@ -13,6 +13,8 @@ setup(
         'lenses',
         'py-stl',
         'optlang',
+        'pysmt',
+        'traces'
     ],
     packages=find_packages(),
 )

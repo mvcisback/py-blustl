@@ -1,0 +1,10 @@
+language: python
+python:
+  - "3.6"
+install: "pip install -r requirements.txt"
+script: pytest --flake8
+before_install:
+  - sudo apt-get install python-glpk
+  - sudo apt-get install glpk-utils
+  - pysmt-install --z3 --confirm-agreement
+
