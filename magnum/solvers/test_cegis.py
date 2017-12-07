@@ -76,7 +76,7 @@ def test_rps():
     assert len(res.counter_examples) == 3
 
     with raises(MaxRoundsError):
-        solve(g, use_smt=True, max_ce=1, refuted_recs=False)
+        solve(g, max_ce=1, refuted_recs=False)
 
     # TODO
     res = solve(g)
@@ -95,7 +95,7 @@ def test_rpss():
     assert len(res.counter_examples) == 3
     assert approx(res.cost) == 0.5
 
-    res = solve(g, max_ce=1, max_rounds=4)
+    res = solve(g, max_ce=2, max_rounds=7)
     assert res.feasible
 
 
