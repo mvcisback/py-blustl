@@ -1,12 +1,10 @@
 """Module for taking a 1 off game and turning into a MPC games."""
 # TODO: incorporate external measurements
-from collections import deque
-
 import stl
 import funcy as fn
 from lenses import bind, lens
 from traces import TimeSeries
-from typing import NamedTuple, Mapping, TypeVar
+from typing import NamedTuple, Mapping
 
 from magnum.game import Game
 from magnum.solvers.cegis import solve
@@ -25,6 +23,7 @@ def decision_times(g):
         yield i * dt
         if i < N - 1:
             i += 1
+
 
 @fn.curry
 def _time_shift(t, trace):
@@ -77,6 +76,3 @@ def mpc(orig: Game, *, use_smt=False,):
         # Stale old games + Remove out of scope games + add new game.
         prev_games = [(t+1, s, g) for t, s, g in prev_games if t < s]
         prev_games.append((0, next_game.scope, next_game))
-
-
-        
