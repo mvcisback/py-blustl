@@ -71,7 +71,7 @@ def encode_top_bot(phi, s, t):
 @encode.register(stl.LinEq)
 def encode_lineq(psi, s, t):
     x = sum(float(term.coeff) * s[(term.id, t)][0] for term in psi.terms)
-    y = s[stl.utils.next(psi, t)][0]
+    y = s[psi >> t][0]
     if psi.op in (">", ">="):
         expr = x - y
     elif psi.op in ("<", "<="):

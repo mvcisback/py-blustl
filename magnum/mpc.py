@@ -1,51 +1,82 @@
 """Module for taking a 1 off game and turning into a MPC games."""
 # TODO: incorporate external measurements
-import stl
-from lenses import bind
+from collections import deque
 
-from magnum.utils import solution_to_stl
+import stl
+import funcy as fn
+from lenses import bind, lens
+from traces import TimeSeries
+from typing import NamedTuple, Mapping, TypeVar
+
 from magnum.game import Game
 from magnum.solvers.cegis import solve
 
 
-def horizons(N, dt):
+class PlannerMessage(NamedTuple):
+    measurement: Mapping[str, float]
+    obj: stl.STL
+
+
+def decision_times(g):
+    N = g.scope
+    dt = g.model.dt
     i = 0
     while True:
         yield i * dt
         if i < N - 1:
             i += 1
 
+@fn.curry
+def _time_shift(t, trace):
+    return TimeSeries([(tau - t, v) for tau, v in trace.items() if tau >= 0])
 
-def mpc_games(g):
-    for dH in horizons(len(g.times), g.model.dt):
-        yield g.new_horizon(dH)
+
+@fn.curry
+def time_shift(t, xs):
+    return fn.walk_values(_time_shift(t), xs)
 
 
-def mpc(orig: Game, *, endless=True, use_smt=False, shift_output_time=True):
-    solution_spec = stl.TOP
-    N = orig.scope
-    for i, g in enumerate(mpc_games(orig)):
-        g = bind(g).specs.learned.set(solution_spec)
+def get_state(t, xs):
+    return fn.walk_values(lens[0].get(), xs)
 
-        # Forget about initial condition
-        if i > 0:
-            g = bind(g).specs.init.set(stl.TOP)
 
-        # TODO: check if we can reuse/extend counter_examples
+def echo_env_mpc(orig: Game, *, use_smt=False):
+    controller = mpc(orig, use_smt=use_smt)
+    res = next(controller)
+    while True:
+        msg = PlannerMessage(get_state(0, res.solution), obj=orig.specs.obj)
+        res = controller.send(msg)
+        yield res
+
+
+def measurement_to_stl(meas):
+    def _lineq(var_val):
+        var, val = var_val
+        return stl.parse(f"{var} = {val:f}")
+
+    return stl.andf(*map(_lineq, meas.items()))
+
+
+def mpc(orig: Game, *, use_smt=False,):
+    prev_games = [(0, orig.scope, orig)]
+    while True:
+        max_age = max(map(lens[0].get(), prev_games))
+
+        age, _, g = prev_games[0]
+        g = g >> max_age - age
+        for age, _, g2 in prev_games[1:]:
+            g &= g2 >> max_age - age
+
         res = solve(g, use_smt=use_smt)
+        msg = yield bind(res).solution.modify(time_shift(max_age))
 
-        if not res.feasible:
-            return
+        new_init = measurement_to_stl(msg.measurement)
+        next_game = orig.reinit(new_init)
+        next_game = next_game.new_obj(msg.obj)
 
-        offset = i > N
-        j = min(i, N - 1)
-        times = range(j + 1)
+        # Stale old games + Remove out of scope games + add new game.
+        prev_games = [(t+1, s, g) for t, s, g in prev_games if t < s]
+        prev_games.append((0, next_game.scope, next_game))
 
-        inputs = g.model.vars.state
-        dt = g.model.dt
-        solution_spec = solution_to_stl(
-            inputs, res.solution, dt, times[:N], offset=offset)
 
-        solution = res.solution
-
-        yield solution
+        

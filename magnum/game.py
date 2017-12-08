@@ -88,3 +88,24 @@ class Game(NamedTuple):
 
     def learn(self, phi):
         return bind(self).specs.learned.modify(lambda x: x & phi)
+
+    def __rshift__(self, t):
+        return bind(self).specs.Each().call('__rshift__', t=t)
+
+    def __and__(self, g):
+        if self.model != g.model:
+            # TODO:
+            # 1. Check that the dynamics are compatible.
+            # 2. If so, merge states etc.
+            raise NotImplementedError
+
+        g2 = bind(self).specs.obj.modify(lambda x: x & g.specs.obj)
+        g2 = bind(self).specs.init.modify(lambda x: x & g.specs.init)
+        g2 = bind(self).specs.learned.modify(lambda x: x & g.specs.learned)
+        return g2
+
+    def reinit(self, phi):
+        return bind(self).specs.init.set(phi)
+
+    def new_obj(self, phi):
+        return bind(self).specs.obj.set(phi)

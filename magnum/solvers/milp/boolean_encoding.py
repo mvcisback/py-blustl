@@ -4,7 +4,6 @@ import stl
 from optlang import Constraint, Variable
 from magnum.constraint_kinds import Kind as K
 
-
 eps = 1e-7
 M = 1000  # TODO
 

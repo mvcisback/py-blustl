@@ -24,16 +24,6 @@ class Result(NamedTuple):
         return fn.project(self.solution, g.model.vars.env)
 
 
-def solution_to_stl(inputs, sol, dt, times, offset=False):
-    def _lineq(var_t):
-        var, i = var_t
-        t = i + 1 if offset else i
-        phi = stl.parse(f"{var} = {sol[var][dt*(t)]:f}")
-        return stl.utils.next(phi, i=i)
-
-    return stl.andf(*map(_lineq, product(inputs, times)))
-
-
 def encode_refuted_rec(refuted_input, radius, times, dt=1):
     def _encode_refuted(name_time):
         u, t = name_time
