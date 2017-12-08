@@ -1,4 +1,4 @@
--e git://github.com/mvcisback/py-stl@master#egg=stl
+-e git://github.com/mvcisback/py-stl@master#egg=py-stl
 -e .
 
 traces==0.3.1
