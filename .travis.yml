@@ -3,11 +3,11 @@ python:
   - "3.6"
 install:
   - pip install -r requirements.txt
+  - pysmt-install --z3 --confirm-agreement
 script: pytest --flake8 --cov=magnum --cov-report=html
 before_install:
   - sudo apt-get install python-glpk
   - sudo apt-get install glpk-utils
-  - sudo pip install pysmt
-  - pysmt-install --z3 --confirm-agreement
+  
 after_success:
   - codecov
