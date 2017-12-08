@@ -1,4 +1,6 @@
--e git+git@github.com:mvcisback/magnumSTL.git@951e5696912a7e542f9f0ab909c07016cc67309b#egg=magnumSTL
+-e git://github.com/mvcisback/py-stl@master#egg=stl
+-e .
+
 traces==0.3.1
 lenses==0.4.0
 funcy==1.9.1

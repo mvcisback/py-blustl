@@ -1,7 +1,8 @@
 language: python
 python:
   - "3.6"
-install: "pip install -r requirements.txt"
+install:
+  - pip install -r requirements.txt
 script: pytest --flake8 --cov=magnum -cov-report=html
 before_install:
   - sudo apt-get install python-glpk
