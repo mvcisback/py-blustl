@@ -1,6 +1,13 @@
 language: python
 python:
   - "3.6"
+
+cache:
+  apt: true
+  directories:
+  - ${HOME}/.cache/pip
+  - ${HOME}/python_bindings/z3
+
 install:
   - pip install -r requirements.txt
   - pysmt-install --z3 --confirm-agreement
@@ -9,7 +16,8 @@ script: pytest --flake8 --cov=magnum --cov-report=html
 before_install:
   - sudo apt-get install python-glpk
   - sudo apt-get install glpk-utils
-  - sudo apt-get install z3
   
 after_success:
   - codecov
+env:
+  - PYTHONPATH=$HOME/.smt_solvers/python-bindings-3.6:${PYTHONPATH}
