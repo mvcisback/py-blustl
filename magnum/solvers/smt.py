@@ -2,7 +2,7 @@
 
 import operator as op
 from itertools import product, chain
-from functools import singledispatch
+from functools import singledispatch, reduce
 
 import funcy as fn
 import numpy as np
@@ -227,26 +227,33 @@ def create_input_bounds(g):
     return stl.andf(*(map(_lineq, product(inputs, g.times))))
 
 
-def encode_and_run(g, counter_examples=None):
-    # TODO: add bounds
-    phi = g.spec_as_stl()
-    phi &= create_input_bounds(g)
-
+def encode_games(g, counter_examples=None):
     if not counter_examples:
         counter_examples = [{}]
 
-    f = TRUE()
+    phi = g.spec_as_stl()
+    phi &= create_input_bounds(g)
+
     store = {}
-    for i, ce in enumerate(counter_examples):
-        # Need to inline counter example .
-        store.update(counter_example_store(g, ce))
-        f1, store = encode(phi, store)
-        f2, store = encode_dynamics(g, store)
 
-        # Create new variable names to avoid conflicts.
-        subs = counter_example_subs(g, store, ce) if i > 0 else {}
-        f &= (f1 & f2).substitute(subs)
+    def _encode_games():
+        nonlocal store
+        for i, ce in enumerate(counter_examples):
+            # Need to inline counter example .
+            store.update(counter_example_store(g, ce))
+            f1, store = encode(phi, store)
+            f2, store = encode_dynamics(g, store)
 
+            # Create new variable names to avoid conflicts.
+            subs = counter_example_subs(g, store, ce) if i > 0 else {}
+            yield (f1 & f2).substitute(subs)
+
+    return list(_encode_games()), store
+
+
+def encode_and_run(g, counter_examples=None):
+    fs, store = encode_games(g, counter_examples)
+    f = reduce(op.and_, fs, TRUE())
     model = get_model(f)
 
     if model is None:
