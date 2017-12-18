@@ -72,7 +72,7 @@ def create_scenario(g, i):
     return g
 
 
-def game_to_milp(g: Game, robust=True, counter_examples=None):
+def game_to_milp(g: Game, counter_examples=None):
     # TODO: implement counter_example encoding
     if not counter_examples:
         counter_examples = [{}]
@@ -109,6 +109,21 @@ def game_to_milp(g: Game, robust=True, counter_examples=None):
     return model, store
 
 
+def game_to_constraints(g: Game, i=0, ce=None):
+    # TODO: implement counter_example encoding
+    if not ce:
+        ce = {}
+
+    store = keydefaultdict(lambda x: rob_encode.z(x, g))
+    # Add counter examples to store
+    store.update(counter_example_store(g, ce, i))
+
+    # Encode each scenario.
+    constraints, obj = encode_game(create_scenario(g, i), store)
+    constraints = list(constraints)
+    return constraints, obj, store
+
+
 # Encoding the dynamics
 
 
@@ -125,8 +140,8 @@ def extract_ts(name, model, g, store):
     return ts
 
 
-def encode_and_run(g: Game, robust=True, counter_examples=None):
-    model, store = game_to_milp(g, robust, counter_examples)
+def encode_and_run(g: Game, counter_examples=None):
+    model, store = game_to_milp(g, counter_examples)
     status = model.optimize()
 
     if status in ('infeasible', 'unbounded'):
@@ -138,3 +153,50 @@ def encode_and_run(g: Game, robust=True, counter_examples=None):
         return Result(cost > 0, cost, sol, counter_examples)
     else:
         raise NotImplementedError((model, status))
+
+
+class MilpSolver(object):
+    def __init__(self, g):
+        self.model = Model()
+        self.g = g
+        self.count = 0
+        self.counter_examples = []
+        
+        constraints, obj, store = game_to_constraints(g)
+        for _, (constr, _) in enumerate(constraints):
+            if constr is True:
+                continue
+            self.model.add(constr)
+
+        J = store[obj][0] if isinstance(store[obj], tuple) else store[obj]
+        self.model.objective = Objective(J, direction='max')
+        self.store = store
+
+    def add_constraint(self, constr):
+        constraints = bool_encode.encode(constr, self.store, 0)
+        for _, (constr, _) in enumerate(constraints):
+            if constr is True:
+                continue
+            self.model.add(constr)
+
+    def add_counter_example(self, ce):
+        pass
+        self.count += 1
+
+    def solve(self):
+        g = self.g
+        store = self.store
+        model = self.model
+        counter_examples = self.counter_examples
+        status = self.model.optimize()
+
+
+        if status in ('infeasible', 'unbounded'):
+            return Result(False, None, None, counter_examples)
+
+        elif status == "optimal":
+            cost = model.objective.value
+            sol = {v: extract_ts(v, model, g, store) for v in fn.cat(g.model.vars)}
+            return Result(cost > 0, cost, sol, counter_examples)
+        else:
+            raise NotImplementedError((model, status))

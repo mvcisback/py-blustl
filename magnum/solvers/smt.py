@@ -8,7 +8,7 @@ import funcy as fn
 import numpy as np
 import traces
 from bidict import bidict
-from pysmt.shortcuts import Symbol, get_model, Plus, And, Or, Equals
+from pysmt.shortcuts import Symbol, get_model, Plus, And, Or, Equals, Solver
 from pysmt.shortcuts import FALSE, TRUE, FreshSymbol
 from pysmt.operators import LT, LE
 from pysmt.typing import REAL, BOOL
@@ -251,6 +251,26 @@ def encode_games(g, counter_examples=None):
     return list(_encode_games()), store
 
 
+def encode_game(g, i=0, ce=None, store=None):
+    phi = g.spec_as_stl()
+    phi &= create_input_bounds(g)
+
+    if store is None:
+        store = {}
+
+    if ce is None:
+        ce = {}
+
+    # Need to inline counter example .
+    store.update(counter_example_store(g, ce))
+    f1, store = encode(phi, store)
+    f2, store = encode_dynamics(g, store)
+
+    # Create new variable names to avoid conflicts.
+    subs = counter_example_subs(g, store, ce) if i > 0 else {}
+    return (f1 & f2).substitute(subs), store
+
+
 def encode_and_run(g, counter_examples=None):
     fs, store = encode_games(g, counter_examples)
     f = reduce(op.and_, fs, TRUE())
@@ -261,3 +281,33 @@ def encode_and_run(g, counter_examples=None):
 
     sol = {v: extract_ts(v, model, g, store) for v in fn.cat(g.model.vars)}
     return Result(True, 0, sol, counter_examples)
+
+
+class SmtSolver(object):
+    def __init__(self, g):
+        self.solver = Solver(logic='LRA')
+        self.g = g
+        self.eq, self.store = encode_game(g)
+        self.count = 0
+        self.counter_examples = []
+
+    def add_constraint(self, constr):
+        constr_eq, self.store = encode(constr)
+        self.eq &= constr_eq
+
+    def add_counter_example(self, ce):
+        ce_eq, self.store = encode_game(
+            self.g, i=self.count, ce=ce, store=self.store)
+
+        self.eq &= ce_eq
+        self.counter_examples.append(ce)
+        self.count += 1
+
+    def solve(self):
+        model = get_model(self.eq)
+        if model is None:
+            return Result(False, None, None, self.counter_examples)
+
+        sol = {v: extract_ts(v, model, self.g, self.store) for v 
+               in fn.cat(self.g.model.vars)}
+        return Result(True, 0, sol, self.counter_examples)
