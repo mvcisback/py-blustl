@@ -87,9 +87,12 @@ def test_rps():
 def test_rpss():
     from magnum.examples.rock_paper_scissors_spock import rps as g
 
+    res = solve(g, use_smt=True)
+    assert res.feasible
+
     res = solve(g)
     assert res.feasible
-    assert len(res.counter_examples) == 3
+    assert len(res.counter_examples) <= 3
     assert approx(res.cost) == 0.5
 
     res = solve(g, max_ce=2, max_rounds=7)

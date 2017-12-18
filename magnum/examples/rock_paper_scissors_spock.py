@@ -27,19 +27,19 @@ context = {
 
     # Rock
     parse("xRock"):
-    parse("(x < 9) | (x >= 49)"),
+    parse("(x < 9.5) | (x >= 50.5)"),
     parse("yRock"):
     parse("(y < 10) | (y >= 50)"),
 
     # Paper
     parse("xPaper"):
-    parse("(x >= 10) & (x < 29)"),
+    parse("(x >= 10.5) & (x < 29.5)"),
     parse("yPaper"):
     parse("(y >= 10) & (y < 30)"),
 
     # Scissors
     parse("xScissors"):
-    parse("(x >= 30) & (x < 50)"),
+    parse("(x >= 30.5) & (x < 49.5)"),
     parse("yScissors"):
     parse("(y >= 30) & (y < 50)"),
 

@@ -46,8 +46,18 @@ def test_create_rock():
 
     assert phi0 | phi1 | phi2 | phi3 == psi
 
+    psi = rpsg.create_rock(k=0, eps=1)
+    phi0 = stl.parse('(x < 9)')
+    phi1 = stl.parse('(x >= 51)')
+
+    assert phi0 | phi1 == psi
+
 
 def test_create_rps_game():
     from magnum.examples.rock_paper_scissors import rps as g
     g2 = rpsg.create_rps_game(n=1, eps=0)
+    assert g.specs == g2.specs
+
+    from magnum.examples.rock_paper_scissors_spock import rps as g
+    g2 = rpsg.create_rps_game(n=1, eps=0.5)
     assert g.specs == g2.specs

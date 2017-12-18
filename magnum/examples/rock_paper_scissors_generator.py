@@ -55,8 +55,8 @@ def create_paper(k=0, p1=True, delta=10, eps=0):
         k=k,
         p1=p1,
         delta=delta,
-        f1=lambda i: delta * (1 + 6 * i),
-        f2=lambda i: delta * (3 + 6 * i))
+        f1=lambda i: delta * (1 + 6 * i) + eps,
+        f2=lambda i: delta * (3 + 6 * i) - eps)
 
 
 def create_scissors(k=0, p1=True, delta=10, eps=0):
@@ -64,8 +64,8 @@ def create_scissors(k=0, p1=True, delta=10, eps=0):
         k=k,
         p1=p1,
         delta=delta,
-        f1=lambda i: delta * (3 + 6 * i),
-        f2=lambda i: delta * (5 + 6 * i))
+        f1=lambda i: delta * (3 + 6 * i) + eps,
+        f2=lambda i: delta * (5 + 6 * i) - eps)
 
 
 def create_rock(k=0, p1=True, delta=10, eps=0):
@@ -73,13 +73,13 @@ def create_rock(k=0, p1=True, delta=10, eps=0):
         k=k + 1,
         p1=p1,
         delta=delta,
-        f1=lambda i: delta * (-1 + 6 * i),
-        f2=lambda i: delta * (1 + 6 * i))
+        f1=lambda i: delta * (-1 + 6 * i) + eps,
+        f2=lambda i: delta * (1 + 6 * i) - eps)
 
     # Hack: to match other rps encoding, we remove first and last one.
     name = 'x' if p1 else 'y'
-    start = stl.parse(f'{name} < {delta}')
-    end = stl.parse(f'{name} >= {delta*((k+1)*6 - 1)}')
+    start = stl.parse(f'{name} < {delta - eps}')
+    end = stl.parse(f'{name} >= {delta*((k+1)*6 - 1) + eps}')
     middle = stl.BOT if k == 0 else stl.orf(*itvls.args[1:-1])
     return start | middle | end
 
