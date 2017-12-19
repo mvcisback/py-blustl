@@ -30,6 +30,7 @@ def round_counter(max_rounds):
 def solve(g,
           max_rounds=4,
           use_smt=False,
+          env_use_smt=False,
           max_ce=float('inf'),
           refuted_recs=True,
           bloat=0):
@@ -37,6 +38,7 @@ def solve(g,
     ∃u∀w . (x(u, w, t), u, w) ⊢ φ
     """
     solve = smt.encode_and_run if use_smt else combined_solver
+    solve2 = smt.encode_and_run if env_use_smt else combined_solver
 
     # Create player for sys and env resp.
     g_inv = g.invert()
@@ -62,7 +64,7 @@ def solve(g,
             return candidate
 
         moves.appendleft(candidate.input(g))
-        counter = solve(g_inv, counter_examples=[moves[0]])
+        counter = solve2(g_inv, counter_examples=[moves[0]])
 
         if not counter.feasible:
             # Check if we've synthesized an optimal input
